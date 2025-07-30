@@ -3,7 +3,7 @@
 [![PowerShell](https://img.shields.io/badge/PowerShell-5.1+-blue.svg)](https://docs.microsoft.com/en-us/powershell/)
 [![Windows](https://img.shields.io/badge/Windows-10%2F11-green.svg)](https://www.microsoft.com/windows)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![LinkedIn](https://img.shields.io/badge/LinkedIn-Isaac%20Lacerda-blue.svg)](https://www.linkedin.com/in/isaaclacerda/)
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-Isaac%20Lacerda-blue.svg)](https://www.linkedin.com/in/TRogato/)
 
 ## 📋 Sobre
 
