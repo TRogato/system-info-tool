@@ -61,7 +61,7 @@ Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 
 #### Opção 3: Download Direto
 ```powershell
-Invoke-WebRequest -Uri "https://raw.githubusercontent.com/isaacoolibama/system-info-tool/main/Get-SystemInfo.ps1" -OutFile "Get-SystemInfo.ps1"
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/TRogato/system-info-tool/main/Get-SystemInfo.ps1" -OutFile "Get-SystemInfo.ps1"
 ```
 
 ### Execução
@@ -78,7 +78,7 @@ powershell -ExecutionPolicy Bypass -File "Get-SystemInfo.ps1"
 
 #### Método 3: Execução Remota (Sem Download)
 ```powershell
-Invoke-Expression (Invoke-WebRequest -Uri "https://raw.githubusercontent.com/isaacoolibama/system-info-tool/main/Get-SystemInfo.ps1" -UseBasicParsing).Content
+Invoke-Expression (Invoke-WebRequest -Uri "https://raw.githubusercontent.com/TRogato/system-info-tool/main/Get-SystemInfo.ps1" -UseBasicParsing).Content
 ```
 
 ## 📊 Informações Coletadas
@@ -139,7 +139,7 @@ MIT License - veja [LICENSE](LICENSE) para detalhes.
 
 **Desenvolvido por Isaac Oolibama R. Lacerda**
 
-[![LinkedIn](https://img.shields.io/badge/LinkedIn-Isaac%20Lacerda-blue.svg)](https://www.linkedin.com/in/isaaclacerda/)
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-TRogato-blue.svg)](https://www.linkedin.com/in/tiago-rogato-da-silveira-095563b6/)
 
 *Para a comunidade de TI*
 
