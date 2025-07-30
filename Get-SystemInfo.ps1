@@ -20,10 +20,10 @@
     Data: $(Get-Date -Format 'dd/MM/yyyy')
     Requer: Windows 10/11, PowerShell 5.1+
     Permissoes: Administrador (recomendado)
-    LinkedIn: https://www.linkedin.com/in/isaaclacerda/
+    LinkedIn: https://www.linkedin.com/in/tiago-rogato-da-silveira-095563b6/
     
 .LINK
-    https://github.com/isaacoolibama/system-info-tool
+    https://github.com/TRogato/system-info-tool
 #>
 
 # =============================================================================
