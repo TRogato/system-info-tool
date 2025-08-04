@@ -3,8 +3,8 @@
 Um script em lote simples e eficaz para Windows, que consolida diversas ferramentas e comandos de TI úteis para diagnóstico, reparo e manutenção do sistema.
 
 **Criado por:** Tiago Rogato (t.rogato@gmail.com)
-**Desenvolvimento/Adaptação das Seções por:** Estefanio Correia
-**Versão:** 2.1
+****
+**Versão:** 2.2
 **Data de Criação:** Agosto de 2024 (Original por Tiago Rogato)
 
 ## 🎨 Exemplo de Saída
@@ -107,4 +107,5 @@ MIT License - veja [LICENSE](LICENSE) para detalhes.
 
 
 ---
+
 
