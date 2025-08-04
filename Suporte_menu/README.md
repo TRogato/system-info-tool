@@ -62,15 +62,15 @@ Para usuários que preferem o PowerShell, você pode baixar e executar o script 
 
     ```powershell
     # URL do arquivo BAT raw no GitHub
-$url = "https://raw.githubusercontent.com/TRogato/system-info-tool/main/Suporte_menu/MENU-WINDOWS.bat"
+    $url = "https://raw.githubusercontent.com/TRogato/system-info-tool/main/Suporte_menu/MENU-WINDOWS.bat"
 
-# Caminho para salvar o arquivo temporariamente (ex: na pasta Temp do usuário)
-$filePath = Join-Path $env:TEMP "MENU-WINDOWS.bat"
+    # Caminho para salvar o arquivo temporariamente (ex: na pasta Temp do usuário)
+    $filePath = Join-Path $env:TEMP "MENU-WINDOWS.bat"
 
-Write-Host "Baixando o script $url para $filePath..."
+    Write-Host "Baixando o script $url para $filePath..."
 
-# Baixa o arquivo
-try {
+    # Baixa o arquivo
+    try {
     Invoke-WebRequest -Uri $url -OutFile $filePath -ErrorAction Stop
     Write-Host "Download concluído."
 
@@ -79,14 +79,14 @@ try {
     Start-Process -FilePath $filePath -Wait
     
     Write-Host "Script finalizado."
-}
-catch {
+    }
+    catch {
     Write-Error "Erro ao baixar ou executar o script: $($_.Exception.Message)"
     Write-Host "Verifique sua conexão com a internet e se o link do GitHub está correto."
-}
+    }
 
-# Opcional: Remover o arquivo temporário após a execução
-# Remove-Item -Path $filePath -Force -ErrorAction SilentlyContinue
+    # Opcional: Remover o arquivo temporário após a execução
+    # Remove-Item -Path $filePath -Force -ErrorAction SilentlyContinue
     ```
 
 ## Pré-requisitos
