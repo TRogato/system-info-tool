@@ -9,7 +9,7 @@ Um script em lote simples e eficaz para Windows, que consolida diversas ferramen
 
 ## 🎨 Exemplo de Saída
 
-![Screenshot do Terminal](/Suporte_menu/Menu_Ti.png)
+![Screenshot do Terminal](/Suporte_menu/Menu_TI.png)
 ## Sobre o Projeto
 Este script foi desenvolvido para simplificar o acesso a várias ferramentas de sistema, eliminando a necessidade de lembrar comandos específicos ou navegar por múltiplos menus do Windows. É uma ferramenta robusta para técnicos de TI, usuários avançados ou qualquer pessoa que precise de uma maneira rápida de executar tarefas comuns de manutenção.
 
