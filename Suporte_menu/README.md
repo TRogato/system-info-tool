@@ -7,6 +7,10 @@ Um script em lote simples e eficaz para Windows, que consolida diversas ferramen
 **Versão:** 2.1
 **Data de Criação:** Agosto de 2024 (Original por Tiago Rogato)
 
+## 🎨 Exemplo de Saída
+
+![Screenshot do Terminal](Suporte_menu/Meu_TI.png)
+
 ## Sobre o Projeto
 
 Este script foi desenvolvido para simplificar o acesso a várias ferramentas de sistema, eliminando a necessidade de lembrar comandos específicos ou navegar por múltiplos menus do Windows. É uma ferramenta robusta para técnicos de TI, usuários avançados ou qualquer pessoa que precise de uma maneira rápida de executar tarefas comuns de manutenção.
