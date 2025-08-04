@@ -12,7 +12,7 @@ rem ***************************************************
 cls
 echo ==================================================
 echo     MENU DE REPARO E FERRAMENTAS DE TI - v2.1
-echo     Criado por Estefanio Correia
+echo     Criado por Tiago Rogato
 echo ==================================================
 echo 1.  Verificar e Reparar Disco (CHKDSK)
 echo 2.  Reparar Arquivos de Sistema (SFC)
