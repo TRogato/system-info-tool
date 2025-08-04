@@ -9,7 +9,7 @@ Um script em lote simples e eficaz para Windows, que consolida diversas ferramen
 
 ## 🎨 Exemplo de Saída
 
-![Screenshot do Terminal](Suporte_menu/Meu_TI.png)
+![Screenshot do Terminal](/Suporte_menu/Menu_TI.png)
 
 ## Sobre o Projeto
 
