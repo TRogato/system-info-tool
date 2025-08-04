@@ -47,11 +47,46 @@ O menu principal oferece as seguintes opções detalhadas:
 
 ## Como Usar
 
-1.  Baixe o arquivo `MENU PARA TI.bat`.
-2.  **Execute o arquivo `MENU PARA TI.bat` como Administrador.** (Clique com o botão direito do mouse e selecione "Executar como administrador" para garantir que todas as funções tenham as permissões necessárias).
+1.  Baixe o arquivo `MENU-WINDOWS.bat` (ou o arquivo .bat correspondente à sua versão) do repositório.
+2.  **Execute o arquivo `.bat` como Administrador.** Para fazer isso, clique com o botão direito do mouse no arquivo e selecione "Executar como administrador" para garantir que todas as funções tenham as permissões necessárias.
 3.  Um menu interativo será exibido no Prompt de Comando.
 4.  Digite o número correspondente à opção desejada e pressione `Enter`.
 5.  Siga as instruções na tela para cada ferramenta selecionada.
+
+### Executando via PowerShell (Alternativo)
+
+Para usuários que preferem o PowerShell, você pode baixar e executar o script temporariamente. **Lembre-se de sempre revisar o código antes de executá-lo.**
+
+1.  Abra o **PowerShell como Administrador**.
+2.  Cole o seguinte código e pressione `Enter`:
+
+    ```powershell
+    # URL do arquivo BAT raw no GitHub
+    $url = "[https://raw.githubusercontent.com/TRogato/system-info-tool/main/Suporte_menu/MENU-WINDOWS.bat](https://raw.githubusercontent.com/TRogato/system-info-tool/main/Suporte_menu/MENU-WINDOWS.bat)"
+
+    # Caminho para salvar o arquivo temporariamente (ex: na pasta Temp do usuário)
+    $filePath = Join-Path $env:TEMP "MENU-WINDOWS.bat"
+
+    Write-Host "Baixando o script $url para $filePath..."
+
+    try {
+        Invoke-WebRequest -Uri $url -OutFile $filePath -ErrorAction Stop
+        Write-Host "Download concluído."
+
+        # Executa o arquivo BAT. É crucial executar como administrador.
+        Write-Host "Executando o script. Por favor, certifique-se de executar esta janela do PowerShell como ADMINISTRADOR."
+        Start-Process -FilePath $filePath -Wait
+        
+        Write-Host "Script finalizado."
+    }
+    catch {
+        Write-Error "Erro ao baixar ou executar o script: $($_.Exception.Message)"
+        Write-Host "Verifique sua conexão com a internet e se o link do GitHub está correto."
+    }
+
+    # Opcional: Remover o arquivo temporário após a execução (descomente para ativar)
+    # Remove-Item -Path $filePath -Force -ErrorAction SilentlyContinue
+    ```
 
 ## Pré-requisitos
 
