@@ -62,10 +62,11 @@ O menu principal oferece as seguintes opções detalhadas:
 Para dúvidas, sugestões ou suporte:
 
 * **Criador Original:** Tiago Rogato (t.rogato@gmail.com)
-* **Desenvolvimento/Adaptação:** Estefanio Correia (estefaniocorreia18@gmail.com)
+
 
 ## Licença
 
 Este projeto é de código aberto. Sinta-se à vontade para usar, modificar e distribuir.
+
 
 ---
