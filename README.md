@@ -137,7 +137,7 @@ MIT License - veja [LICENSE](LICENSE) para detalhes.
 
 <div align="center">
 
-**Desenvolvido por Isaac Oolibama R. Lacerda**
+**Desenvolvido por TRogato**
 
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-TRogato-blue.svg)](https://www.linkedin.com/in/tiago-rogato-da-silveira-095563b6/)
 
