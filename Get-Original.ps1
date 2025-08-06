@@ -300,7 +300,7 @@ function Export-SystemInfoToCSV {
         $csvData += [PSCustomObject]@{
             Categoria = "WINDOWS UPDATE"
             Campo     = "STATUS DO SERVICO"
-            Valor     = Clean-SpecialCharacters $SystemData.WUStatus
+            Valor     = Clean-SpecialCharacters ($SystemData.WUStatus | Out-String)
         }
         if ($SystemData.LastUpdates -and $SystemData.LastUpdates.Count -gt 0) {
             foreach ($u in $SystemData.LastUpdates) {
@@ -309,6 +309,53 @@ function Export-SystemInfoToCSV {
                     Campo     = "KB: $($u.KB)"
                     Valor     = "Data: $($u.InstalledOn) $($u.Description)"
                 }
+            }
+        }
+        else {
+            $csvData += [PSCustomObject]@{
+                Categoria = "WINDOWS UPDATE"
+                Campo     = "ULTIMAS ATUALIZACOES"
+                Valor     = "Nao foi possivel obter as ultimas atualizacoes."
+            }
+        }
+
+        # Usuarios locais
+        if ($SystemData.LocalUsers -and $SystemData.LocalUsers.Count -gt 0) {
+            foreach ($u in $SystemData.LocalUsers) {
+                $status = if ($u.Enabled) { "Ativo" } else { "Desabilitado" }
+                $admin = try {
+                    if ($u.Name -in (Get-LocalGroupMember -Group "Administradores" | Select-Object -ExpandProperty Name -ErrorAction SilentlyContinue)) { "(Admin)" } else { "" }
+                }
+                catch { "" }
+                $csvData += [PSCustomObject]@{
+                    Categoria = "USUARIOS LOCAIS"
+                    Campo     = $u.Name
+                    Valor     = ("Status: $status $admin | Ultimo Logon: $($u.LastLogon) | Expira Senha: $($u.PasswordExpired) | Nunca Expira: $($u.PasswordNeverExpires)")
+                }
+            }
+        }
+        else {
+            $csvData += [PSCustomObject]@{
+                Categoria = "USUARIOS LOCAIS"
+                Campo     = "USUARIOS"
+                Valor     = "Nao foi possivel obter usuarios locais ou nenhum usuario encontrado."
+            }
+        }
+        # Grupos locais
+        if ($SystemData.LocalGroups -and $SystemData.LocalGroups.Count -gt 0) {
+            foreach ($g in $SystemData.LocalGroups) {
+                $csvData += [PSCustomObject]@{
+                    Categoria = "GRUPOS LOCAIS"
+                    Campo     = $g.Group
+                    Valor     = $g.Members
+                }
+            }
+        }
+        else {
+            $csvData += [PSCustomObject]@{
+                Categoria = "GRUPOS LOCAIS"
+                Campo     = "GRUPOS"
+                Valor     = "Nao foi possivel obter grupos locais ou nenhum grupo encontrado."
             }
         }
 
@@ -408,6 +455,42 @@ try {
 catch {
     $activationStatus = 'Desconhecido'
     $licenseType = 'Desconhecido'
+}
+
+# Obtem status de ativação e tipo de licença
+try {
+    $lic = Get-CimInstance SoftwareLicensingProduct -ErrorAction Stop | Where-Object { $_.PartialProductKey -and $_.LicenseStatus -ne $null }
+    $activationStatus = switch ($lic.LicenseStatus) {
+        0 { 'Desconhecido' }
+        1 { 'Licenciado' }
+        2 { 'Inicializado' }
+        3 { 'Notificado' }
+        4 { 'Não Licenciado' }
+        5 { 'Necessita Reinstalação' }
+        default { 'Desconhecido' }
+    }
+    $licenseType = if ($lic.ProductKeyChannel) {
+        switch -Wildcard ($lic.ProductKeyChannel) {
+            '*OEM*' { 'OEM' }
+            '*Retail*' { 'Retail' }
+            '*Volume*' { 'Volume' }
+            default { $lic.ProductKeyChannel }
+        }
+    }
+    else {
+        'Desconhecido'
+    }
+    # Obtem Product Key do Windows
+    try {
+        $ProductKey = (Get-CimInstance -Query "SELECT * FROM SoftwareLicensingService").OA3xOriginalProductKey
+        if (-not $ProductKey) { $ProductKey = "N/A" }
+    }
+    catch { $ProductKey = "N/A" }
+}
+catch {
+    $activationStatus = 'Desconhecido'
+    $licenseType = 'Desconhecido'
+    $ProductKey = 'N/A'
 }
 
 # =============================================================================
@@ -687,9 +770,16 @@ if ($choice -eq "1") {
         LocalGroups      = $LocalGroups
         LastUpdates      = $LastUpdates
         WUStatus         = $WUStatus
+        ProductKey       = $ProductKey
     }
     # Gera o arquivo CSV
     $csvResult = Export-SystemInfoToCSV -SystemData $systemData
+    $csvData += [PSCustomObject]@{ Categoria = "SISTEMA OPERACIONAL"; Campo = "NOME"; Valor = Clean-SpecialCharacters $SystemData.SO }
+    $csvData += [PSCustomObject]@{ Categoria = "SISTEMA OPERACIONAL"; Campo = "VERSAO"; Valor = Clean-SpecialCharacters $SystemData.VERS }
+    $csvData += [PSCustomObject]@{ Categoria = "SISTEMA OPERACIONAL"; Campo = "ARQUITETURA"; Valor = Clean-SpecialCharacters $SystemData.ARCH }
+    $csvData += [PSCustomObject]@{ Categoria = "SISTEMA OPERACIONAL"; Campo = "PRODUCT KEY WINDOWS"; Valor = Clean-SpecialCharacters $SystemData.ProductKey }
+    $csvData += [PSCustomObject]@{ Categoria = "SISTEMA OPERACIONAL"; Campo = "STATUS DE ATIVACAO"; Valor = Clean-SpecialCharacters $SystemData.ActivationStatus }
+    $csvData += [PSCustomObject]@{ Categoria = "SISTEMA OPERACIONAL"; Campo = "TIPO DE LICENCA"; Valor = Clean-SpecialCharacters $SystemData.LicenseType }
     if ($csvResult) {
         Write-Host "`n" -NoNewline
         Write-Host "===============================================" -ForegroundColor Green
