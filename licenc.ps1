@@ -426,7 +426,7 @@ function Get-SecurityInfo {
         if ($updates) {
             $info.RecentUpdates = $updates -join '; '
         } else {
-            $info.RecentUpdates = 'Nenhuma'
+            $info.RecentUpdates = 'Nenhum'
         }
     } catch {
         $info.RecentUpdates = 'N/A'
@@ -457,17 +457,23 @@ function Get-SecurityInfo {
             if ($s) { "$($s.Name): $($s.Status)" } else { "$svc: N/A" }
         }
         $info.CriticalServices = $svcStatus -join ', '
-    } catch { $info.CriticalServices = 'N/A' }
+    } catch {
+        $info.CriticalServices = 'N/A'
+    }
     # IP público
     try {
         $publicIP = Invoke-RestMethod -Uri 'https://api.ipify.org?format=text' -TimeoutSec 5 -ErrorAction Stop
         $info.PublicIP = $publicIP
-    } catch { $info.PublicIP = 'N/A' }
+    } catch {
+        $info.PublicIP = 'N/A'
+    }
     # BitLocker
     try {
         $bitlocker = Get-BitLockerVolume -ErrorAction Stop | Where-Object { $_.VolumeStatus -eq 'FullyEncrypted' } | Select-Object -ExpandProperty MountPoint
         $info.BitLocker = if ($bitlocker) { $bitlocker -join ', ' } else { 'Desativado' }
-    } catch { $info.BitLocker = 'N/A' }
+    } catch {
+        $info.BitLocker = 'N/A'
+    }
     return $info
 }
 
