@@ -468,7 +468,7 @@ if ($choice -eq "1") {
         Write-Host "`n" -NoNewline
         Write-Host "==================================================" -ForegroundColor Gray
         Write-Host "`nObrigado por usar o System Information Tool!" -ForegroundColor Cyan
-        Write-Host "GitHub: https://github.com/isaacoolibama/system-info-tool" -ForegroundColor Yellow
+        Write-Host "GitHub: https://github.com/TRogato/system-info-tool" -ForegroundColor Yellow
         Write-Host "`nPressione qualquer tecla para sair..." -ForegroundColor Gray
         $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
         [Environment]::Exit(0)
