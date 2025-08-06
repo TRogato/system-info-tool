@@ -68,11 +68,10 @@ function Get-OfficeProductKey {
 # --- Funcao para simular loading visual ---
 function Show-Loading {
     param([string[]]$Steps)
-    
     foreach ($step in $Steps) {
         Write-Host $step -ForegroundColor Yellow
         Start-Sleep -Milliseconds 600
-        OFFICEKEY = Get-OfficeProductKey
+    }
 }
 
 # --- Funcoes de formatacao e exibicao ---
