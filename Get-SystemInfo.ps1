@@ -154,12 +154,12 @@ function Export-SystemInfoToCSV {
         $csvData += [PSCustomObject]@{
             Categoria = "SISTEMA OPERACIONAL"
             Campo = "PRODUCT KEY WINDOWS"
-            Valor = Clean-SpecialCharacters $SystemData.PKEY
+            Valor = Clean-SpecialCharacters (Mask-ProductKey $SystemData.PKEY)
         }
         $csvData += [PSCustomObject]@{
             Categoria = "SISTEMA OPERACIONAL"
             Campo = "PRODUCT KEY OFFICE"
-            Valor = Clean-SpecialCharacters $SystemData.OFFICEKEY
+            Valor = Clean-SpecialCharacters (Mask-ProductKey $SystemData.OFFICEKEY)
         }
         # Informações do Hardware
         $csvData += [PSCustomObject]@{
@@ -483,7 +483,6 @@ function Get-CPUInfo {
     try {
         $c = Get-CimInstance Win32_Processor -ErrorAction Stop | Select-Object -First 1
         $baseGHz = [math]::Round($c.CurrentClockSpeed/1000,1)
-        $boostGHz = [math]::Round($c.MaxClockSpeed/1000,1)
         return "$($c.Name.Trim()) | Cores: $($c.NumberOfCores) | Threads: $($c.NumberOfLogicalProcessors) | Base: ${baseGHz}GHz"
     } catch {
         return 'N/A'
