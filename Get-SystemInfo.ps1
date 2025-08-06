@@ -110,9 +110,10 @@ function Clean-SpecialCharacters {
     if ([string]::IsNullOrEmpty($Text)) { return $Text }
     $cleaned = $Text -replace "[\x00-\x1F\x7F-\x9F]", ""
     $cleaned = $cleaned -replace "\xA0", " "
-    $cleaned = $cleaned -replace "[\u201C\u201D]", '"'
-    $cleaned = $cleaned -replace "[\u2018\u2019]", "'"
-    $cleaned = $cleaned -replace "[\u2013\u2014]", "-"
+    # Substitui aspas tipográficas e travessão por equivalentes ASCII
+    $cleaned = $cleaned -replace '[“”]', '"'
+    $cleaned = $cleaned -replace "[‘’]", "'"
+    $cleaned = $cleaned -replace "[–—]", "-"
     $normalized = [Text.NormalizationForm]::FormD
     $cleaned = [string]::Join('', ($cleaned.Normalize($normalized).ToCharArray() | Where-Object { [Globalization.CharUnicodeInfo]::GetUnicodeCategory($_) -ne 'NonSpacingMark' }))
     $cleaned = $cleaned -replace '[^\x00-\x7F]', ''
@@ -378,23 +379,47 @@ function Get-SecurityInfo {
     $comp = Get-CimInstance Win32_ComputerSystem -ErrorAction SilentlyContinue
     # Grupo de trabalho ou domínio
     try {
-        $info.WorkgroupOrDomain = if ($comp.PartOfDomain) { $comp.Domain } else { $comp.Workgroup }
-    } catch { $info.WorkgroupOrDomain = 'N/A' }
+        if ($comp.PartOfDomain) {
+            $info.WorkgroupOrDomain = $comp.Domain
+        } else {
+            $info.WorkgroupOrDomain = $comp.Workgroup
+        }
+    } catch {
+        $info.WorkgroupOrDomain = 'N/A'
+    }
     # Usuários administradores locais (usando SID para suporte multilíngue)
     try {
         $admins = Get-LocalGroupMember -SID S-1-5-32-544 -ErrorAction Stop | Select-Object -ExpandProperty Name
-        $info.LocalAdmins = if ($admins) { $admins -join ', ' } else { 'Nenhum' }
-    } catch { $info.LocalAdmins = 'N/A' }
+        if ($admins) {
+            $info.LocalAdmins = $admins -join ', '
+        } else {
+            $info.LocalAdmins = 'Nenhum'
+        }
+    } catch {
+        $info.LocalAdmins = 'N/A'
+    }
     # Firewall do Windows
     try {
         $fw = Get-NetFirewallProfile -ErrorAction Stop | Where-Object { $_.Enabled -eq $true } | Select-Object -ExpandProperty Name
-        $info.FirewallStatus = if ($fw) { $fw -join ', ' } else { 'Desativado' }
-    } catch { $info.FirewallStatus = 'N/A' }
+        if ($fw) {
+            $info.FirewallStatus = $fw -join ', '
+        } else {
+            $info.FirewallStatus = 'Desativado'
+        }
+    } catch {
+        $info.FirewallStatus = 'N/A'
+    }
     # Antivírus instalado
     try {
         $av = Get-CimInstance -Namespace root/SecurityCenter2 -ClassName AntivirusProduct -ErrorAction Stop | Select-Object -ExpandProperty displayName
-        $info.Antivirus = if ($av) { $av -join ', ' } else { 'Nenhum' }
-    } catch { $info.Antivirus = 'N/A' }
+        if ($av) {
+            $info.Antivirus = $av -join ', '
+        } else {
+            $info.Antivirus = 'Nenhum'
+        }
+    } catch {
+        $info.Antivirus = 'N/A'
+    }
     # Atualizações recentes
     try {
         $updates = Get-HotFix | Sort-Object -Property InstalledOn -Descending | Select-Object -First 3 | ForEach-Object { "$($_.Description) $($_.HotFixID) ($($_.InstalledOn))" }
@@ -403,12 +428,16 @@ function Get-SecurityInfo {
         } else {
             $info.RecentUpdates = 'Nenhuma'
         }
-    } catch { $info.RecentUpdates = 'N/A' }
+    } catch {
+        $info.RecentUpdates = 'N/A'
+    }
     # Políticas de senha
     try {
         $pol = net accounts | Out-String
-        $info.PasswordPolicy = ($pol -replace '[\r\n]+', ' | ')
-    } catch { $info.PasswordPolicy = 'N/A' }
+        $info.PasswordPolicy = ($pol -replace "[\r\n]+", " | ")
+    } catch {
+        $info.PasswordPolicy = 'N/A'
+    }
     # Compartilhamentos de rede
     try {
         $shares = Get-SmbShare -ErrorAction Stop | Where-Object { $_.Name -notin @('ADMIN$', 'C$', 'IPC$') } | Select-Object -ExpandProperty Name
@@ -417,7 +446,9 @@ function Get-SecurityInfo {
         } else {
             $info.NetworkShares = 'Nenhum'
         }
-    } catch { $info.NetworkShares = 'N/A' }
+    } catch {
+        $info.NetworkShares = 'N/A'
+    }
     # Serviços de rede críticos
     try {
         $services = @('TermService','LanmanServer','LanmanWorkstation','WinRM')
@@ -576,7 +607,11 @@ function Get-NetworkInfo {
             Sort-Object -Property Name
         foreach ($nic in $allNics) {
             $conf = Get-CimInstance Win32_NetworkAdapterConfiguration -Filter "Index=$($nic.DeviceID)" -ErrorAction SilentlyContinue
-            $mac = if ($nic.MACAddress) { ($nic.MACAddress -replace '(.{2})(?!$)', '$1:') } else { 'N/A' }
+            $mac = if ($nic.MACAddress) {
+                [regex]::Replace($nic.MACAddress, "(.{2})(?!$)", "$1:")
+            } else {
+                'N/A'
+            }
             $isWifi = ($nic.AdapterType -match "Wireless") -or ($nic.Name -match "Wi.?Fi|802\.11|Wireless")
             $isVirtual = ($nic.Name -match "vEthernet|Hyper-V|Virtual|TAP|OpenVPN|Tailscale")
             $isBluetooth = ($nic.Name -match "Bluetooth")
