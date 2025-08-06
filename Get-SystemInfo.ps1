@@ -56,7 +56,7 @@ function Get-OfficeProductKey {
 
 .NOTES
     Autor: Isaac Oolibama R. Lacerda
-    Versão: 1.2
+    Versão: 1.3
     Data: 06/08/2025
     Requer: Windows 10/11, PowerShell 5.1+
     Permissões: Administrador (obrigatório)
@@ -110,9 +110,9 @@ function Clean-SpecialCharacters {
     if ([string]::IsNullOrEmpty($Text)) { return $Text }
     $cleaned = $Text -replace "[\x00-\x1F\x7F-\x9F]", ""
     $cleaned = $cleaned -replace "\xA0", " "
-    $cleaned = $cleaned -replace "[\u201C\u201D]", '"'
-    $cleaned = $cleaned -replace "[\u2018\u2019]", "'"
-    $cleaned = $cleaned -replace "[\u2013\u2014]", "-"
+    $cleaned = $cleaned -replace "[\x201C\x201D]", '"'
+    $cleaned = $cleaned -replace "[\x2018\x2019]", "'"
+    $cleaned = $cleaned -replace "[\x2013\x2014]", "-"
     $normalized = [Text.NormalizationForm]::FormD
     $cleaned = [string]::Join('', ($cleaned.Normalize($normalized).ToCharArray() | Where-Object { [Globalization.CharUnicodeInfo]::GetUnicodeCategory($_) -ne 'NonSpacingMark' }))
     $cleaned = $cleaned -replace '[^\x00-\x7F]', ''
@@ -569,7 +569,7 @@ function Get-NetworkInfo {
             Sort-Object -Property Name
         foreach ($nic in $allNics) {
             $conf = Get-CimInstance Win32_NetworkAdapterConfiguration -Filter "Index=$($nic.DeviceID)" -ErrorAction SilentlyContinue
-            $mac = if ($nic.MACAddress) { $nic.MACAddress -replace "(.{2})(?!$)", '$1:' } else { 'N/A' }
+            $mac = if ($nic.MACAddress) { $nic.MACAddress -replace '(.{2})(?!$)', '$1:' } else { 'N/A' }
             $isWifi = ($nic.AdapterType -match "Wireless") -or ($nic.Name -match "Wi.?Fi|802\.11|Wireless")
             $isVirtual = ($nic.Name -match "vEthernet|Hyper-V|Virtual|TAP|OpenVPN|Tailscale")
             $isBluetooth = ($nic.Name -match "Bluetooth")
