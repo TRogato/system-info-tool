@@ -110,9 +110,9 @@ function Clean-SpecialCharacters {
     if ([string]::IsNullOrEmpty($Text)) { return $Text }
     $cleaned = $Text -replace "[\x00-\x1F\x7F-\x9F]", ""
     $cleaned = $cleaned -replace "\xA0", " "
-    $cleaned = $cleaned -replace "[\x201C\x201D]", '"'
-    $cleaned = $cleaned -replace "[\x2018\x2019]", "'"
-    $cleaned = $cleaned -replace "[\x2013\x2014]", "-"
+    $cleaned = $cleaned -replace "[\u201C\u201D]", '"'
+    $cleaned = $cleaned -replace "[\u2018\u2019]", "'"
+    $cleaned = $cleaned -replace "[\u2013\u2014]", "-"
     $normalized = [Text.NormalizationForm]::FormD
     $cleaned = [string]::Join('', ($cleaned.Normalize($normalized).ToCharArray() | Where-Object { [Globalization.CharUnicodeInfo]::GetUnicodeCategory($_) -ne 'NonSpacingMark' }))
     $cleaned = $cleaned -replace '[^\x00-\x7F]', ''
@@ -398,17 +398,25 @@ function Get-SecurityInfo {
     # Atualizações recentes
     try {
         $updates = Get-HotFix | Sort-Object -Property InstalledOn -Descending | Select-Object -First 3 | ForEach-Object { "$($_.Description) $($_.HotFixID) ($($_.InstalledOn))" }
-        $info.RecentUpdates = if ($updates) { $updates -join '; ' } else { 'Nenhuma' }
+        if ($updates) {
+            $info.RecentUpdates = $updates -join '; '
+        } else {
+            $info.RecentUpdates = 'Nenhuma'
+        }
     } catch { $info.RecentUpdates = 'N/A' }
     # Políticas de senha
     try {
         $pol = net accounts | Out-String
-        $info.PasswordPolicy = $pol -replace '[\r\n]+', ' | '
+        $info.PasswordPolicy = ($pol -replace '[\r\n]+', ' | ')
     } catch { $info.PasswordPolicy = 'N/A' }
     # Compartilhamentos de rede
     try {
         $shares = Get-SmbShare -ErrorAction Stop | Where-Object { $_.Name -notin @('ADMIN$', 'C$', 'IPC$') } | Select-Object -ExpandProperty Name
-        $info.NetworkShares = if ($shares) { $shares -join ', ' } else { 'Nenhum' }
+        if ($shares) {
+            $info.NetworkShares = $shares -join ', '
+        } else {
+            $info.NetworkShares = 'Nenhum'
+        }
     } catch { $info.NetworkShares = 'N/A' }
     # Serviços de rede críticos
     try {
@@ -568,7 +576,7 @@ function Get-NetworkInfo {
             Sort-Object -Property Name
         foreach ($nic in $allNics) {
             $conf = Get-CimInstance Win32_NetworkAdapterConfiguration -Filter "Index=$($nic.DeviceID)" -ErrorAction SilentlyContinue
-            $mac = if ($nic.MACAddress) { $nic.MACAddress -replace '(.{2})(?!$)', '$1:' } else { 'N/A' }
+            $mac = if ($nic.MACAddress) { ($nic.MACAddress -replace '(.{2})(?!$)', '$1:') } else { 'N/A' }
             $isWifi = ($nic.AdapterType -match "Wireless") -or ($nic.Name -match "Wi.?Fi|802\.11|Wireless")
             $isVirtual = ($nic.Name -match "vEthernet|Hyper-V|Virtual|TAP|OpenVPN|Tailscale")
             $isBluetooth = ($nic.Name -match "Bluetooth")
