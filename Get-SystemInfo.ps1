@@ -1,65 +1,25 @@
-# Função para tentar obter o serial do Office (última chave instalada)
-function Get-OfficeProductKey {
-    try {
-        $officePaths = @(
-            'HKLM:\SOFTWARE\Microsoft\Office\ClickToRun\Configuration',
-            'HKLM:\SOFTWARE\Microsoft\Office\16.0\Registration',
-            'HKLM:\SOFTWARE\Microsoft\Office\15.0\Registration',
-            'HKLM:\SOFTWARE\Microsoft\Office\14.0\Registration',
-            'HKLM:\SOFTWARE\Wow6432Node\Microsoft\Office\16.0\Registration',
-            'HKLM:\SOFTWARE\Wow6432Node\Microsoft\Office\15.0\Registration',
-            'HKLM:\SOFTWARE\Wow6432Node\Microsoft\Office\14.0\Registration'
-        )
-        foreach ($path in $officePaths) {
-            if (Test-Path $path) {
-                $keys = Get-ChildItem $path -ErrorAction SilentlyContinue
-                foreach ($key in $keys) {
-                    $prod = Get-ItemProperty $key.PSPath -ErrorAction SilentlyContinue
-                    if ($prod.ProductID) {
-                        return $prod.ProductID
-                    }
-                }
-            }
-        }
-        $wmi = Get-WmiObject -Query "SELECT * FROM SoftwareLicensingService WHERE ApplicationID IS NOT NULL AND Name LIKE '%Office%'" -ErrorAction SilentlyContinue
-        if ($wmi -and $wmi.Count -gt 0) {
-            return $wmi[0].PartialProductKey
-        }
-        return "N/A"
-    } catch {
-        return "N/A"
-    }
-}
-
 <#
 .SYNOPSIS
-    System Information Tool - Ferramenta para coleta de informações do sistema Windows
+    System Information Tool - Ferramenta para coleta de informacoes do sistema Windows
     
 .DESCRIPTION
-    Script PowerShell que coleta e exibe informações detalhadas sobre hardware, software,
-    rede, armazenamento e segurança do sistema Windows. Inclui exportação para CSV e suporte
-    a múltiplas línguas. Ideal para técnicos de TI e administradores de sistema.
+    Script PowerShell que coleta e exibe informacoes detalhadas sobre hardware, software,
+    rede e armazenamento do sistema Windows. Ideal para tecnicos de TI e administradores
+    de sistema que precisam de relatorios rapidos e organizados.
     
-.PARAMETER NoClear
-    Desativa a limpeza da tela para execuções automatizadas.
+.PARAMETER None
+    Este script nao aceita parametros.
     
-.PARAMETER OutputPath
-    Especifica o caminho para salvar o arquivo CSV. Padrão: Desktop.
-
 .EXAMPLE
     .\Get-SystemInfo.ps1
-    Executa o script e exibe informações no console com opção de exportar para CSV.
+    Executa o script e exibe todas as informacoes do sistema.
     
-.EXAMPLE
-    .\Get-SystemInfo.ps1 -NoClear -OutputPath "C:\Relatorios\SystemInfo.csv"
-    Executa sem limpar a tela e salva o CSV no caminho especificado.
-
 .NOTES
     Autor: Isaac Oolibama R. Lacerda
-    Versão: 1.3
-    Data: 06/08/2025
+    Versao: 1.0
+    Data: $(Get-Date -Format 'dd/MM/yyyy')
     Requer: Windows 10/11, PowerShell 5.1+
-    Permissões: Administrador (obrigatório)
+    Permissoes: Administrador (recomendado)
     LinkedIn: https://www.linkedin.com/in/tiago-rogato-da-silveira-095563b6/
     
 .LINK
@@ -67,287 +27,96 @@ function Get-OfficeProductKey {
 #>
 
 # =============================================================================
-# CONFIGURAÇÕES INICIAIS E FUNÇÕES AUXILIARES
+# CONFIGURACOES INICIAIS E FUNCOES AUXILIARES
 # =============================================================================
 
-# Configuração de codificação para suporte a caracteres especiais
+# Configuracao de codificacao para suporte a caracteres especiais
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
-# Verifica permissões administrativas
-$isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
-if (-not $isAdmin) {
-    Write-Host "❌ Este script requer permissões administrativas. Execute como administrador." -ForegroundColor Red
-    [Environment]::Exit(1)
-}
-
-# --- Função para simular loading visual ---
+# --- Funcao para simular loading visual ---
 function Show-Loading {
     param([string[]]$Steps)
+    
     foreach ($step in $Steps) {
-        Write-Host "$step" -ForegroundColor Yellow
-        Start-Sleep -Milliseconds 400
+        Write-Host $step -ForegroundColor Yellow
+        Start-Sleep -Milliseconds 600
     }
 }
 
-# --- Funções de formatação e exibição ---
+# --- Funcoes de formatacao e exibicao ---
 function Write-Header($t) {
-    Write-Host "`n┌────────────────────── $t ──────────────────────┐" -ForegroundColor Magenta
-}
-
-function Write-Footer {
-    Write-Host "└────────────────────────────────────────────────┘" -ForegroundColor Magenta
+    Write-Host "`n===== $t =====`n" -ForegroundColor Magenta
 }
 
 function Write-Field($k, $v) {
-    $fmtKey = "{0,-22}:" -f $k
+    $fmtKey = "{0,-18}:" -f $k
     Write-Host -NoNewline $fmtKey -ForegroundColor Cyan
     Write-Host " $v"
 }
 
-
-# --- Função para mascarar chaves de produto ---
-function Mask-ProductKey($key) {
-    if ($key -eq "N/A" -or $key.Length -lt 5) { return $key }
-    return "*****" + $key.Substring($key.Length - 5)
+# --- Funcao para limpar caracteres especiais e normalizar acentos ---
+function Clean-SpecialCharacters {
+    param([string]$Text)
+    if ([string]::IsNullOrEmpty($Text)) { return $Text }
+    # Remove caracteres de controle problematicos
+    $cleaned = $Text -replace "[\u0000-\u001F\u007F-\u009F]", ""
+    $cleaned = $cleaned -replace "[\u2028\u2029]", " "
+    $cleaned = $cleaned -replace "[\u00A0]", " "
+    # Substitui aspas e travessões
+    $cleaned = $cleaned -replace "[\u201C\u201D]", '"'
+    $cleaned = $cleaned -replace "[\u2018\u2019]", "'"
+    $cleaned = $cleaned -replace "[\u2013\u2014]", "-"
+    # Normaliza acentos usando .NET
+    $normalized = [Text.NormalizationForm]::FormD
+    $cleaned = [string]::Join('', ($cleaned.Normalize($normalized).ToCharArray() | Where-Object { [Globalization.CharUnicodeInfo]::GetUnicodeCategory($_) -ne 'NonSpacingMark' }))
+    # Remove outros caracteres especiais
+    $cleaned = $cleaned -replace '[^\x00-\x7F]', ''
+    # Converte para maiusculo
+    $cleaned = $cleaned.ToUpper()
+    return $cleaned.Trim()
 }
 
-# --- Função para gerar arquivo CSV ---
+# --- Funcao para gerar arquivo CSV ---
 function Export-SystemInfoToCSV {
-    param([hashtable]$SystemData, [string]$OutputPath, [switch]$Utf8)
+    param([hashtable]$SystemData, [switch]$Utf8)
     try {
-        if (-not $OutputPath) {
-            $desktopPath = [Environment]::GetFolderPath("Desktop")
-            $timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
-            $OutputPath = Join-Path $desktopPath "SystemInfo_$timestamp.csv"
-        }
+        $desktopPath = [Environment]::GetFolderPath("Desktop")
+        $timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
+        $csvPath = Join-Path $desktopPath "SystemInfo_$timestamp.csv"
         $csvData = @()
-        # Informações do Sistema Operacional
-        $csvData += [PSCustomObject]@{
-            Categoria = "SISTEMA OPERACIONAL"
-            Campo = "NOME"
-            Valor = Clean-SpecialCharacters $SystemData.SO
-        }
-        $csvData += [PSCustomObject]@{
-            Categoria = "SISTEMA OPERACIONAL"
-            Campo = "VERSAO"
-            Valor = Clean-SpecialCharacters $SystemData.VERS
-        }
-        $csvData += [PSCustomObject]@{
-            Categoria = "SISTEMA OPERACIONAL"
-            Campo = "ARQUITETURA"
-            Valor = Clean-SpecialCharacters $SystemData.ARCH
-        }
-        $csvData += [PSCustomObject]@{
-            Categoria = "SISTEMA OPERACIONAL"
-            Campo = "PRODUCT KEY WINDOWS"
-            Valor = Clean-SpecialCharacters (Mask-ProductKey $SystemData.PKEY)
-        }
-        $csvData += [PSCustomObject]@{
-            Categoria = "SISTEMA OPERACIONAL"
-            Campo = "PRODUCT KEY OFFICE"
-            Valor = Clean-SpecialCharacters (Mask-ProductKey $SystemData.OFFICEKEY)
-        }
-        # Informações do Hardware
-        $csvData += [PSCustomObject]@{
-            Categoria = "HARDWARE"
-            Campo = "PROCESSADOR"
-            Valor = Clean-SpecialCharacters $SystemData.CPU
-        }
-        $csvData += [PSCustomObject]@{
-            Categoria = "HARDWARE"
-            Campo = "MEMORIA RAM"
-            Valor = Clean-SpecialCharacters $SystemData.RAM
-        }
-        $csvData += [PSCustomObject]@{
-            Categoria = "HARDWARE"
-            Campo = "CONFIGURACAO DE CANAIS"
-            Valor = Clean-SpecialCharacters $SystemData.Channel
-        }
-        $csvData += [PSCustomObject]@{
-            Categoria = "HARDWARE"
-            Campo = "VELOCIDADE DA MEMORIA"
-            Valor = Clean-SpecialCharacters $SystemData.Speeds
-        }
-        $csvData += [PSCustomObject]@{
-            Categoria = "HARDWARE"
-            Campo = "PLACA DE VIDEO"
-            Valor = Clean-SpecialCharacters $SystemData.GPU
-        }
-        $csvData += [PSCustomObject]@{
-            Categoria = "HARDWARE"
-            Campo = "PLACA-MAE"
-            Valor = Clean-SpecialCharacters $SystemData.BOARD
-        }
-        $csvData += [PSCustomObject]@{
-            Categoria = "HARDWARE"
-            Campo = "BIOS"
-            Valor = Clean-SpecialCharacters $SystemData.BIOS
-        }
-        $csvData += [PSCustomObject]@{
-            Categoria = "HARDWARE"
-            Campo = "NUMERO DE SERIE"
-            Valor = Clean-SpecialCharacters $SystemData.SERIAL
-        }
-        # Informações de Rede
-        if ($SystemData.NET -is [array]) {
-            for ($i = 0; $i -lt $SystemData.NET.Count; $i++) {
-                $csvData += [PSCustomObject]@{
-                    Categoria = "REDE"
-                    Campo = "INTERFACE $($i + 1)"
-                    Valor = Clean-SpecialCharacters $SystemData.NET[$i]
-                }
-            }
-        } else {
+        # ...existing code...
+        # Adiciona Product Key do Windows se existir
+        if ($SystemData.PKEY) {
             $csvData += [PSCustomObject]@{
-                Categoria = "REDE"
-                Campo = "INTERFACES"
-                Valor = Clean-SpecialCharacters $SystemData.NET
+                Categoria = "SISTEMA OPERACIONAL"
+                Campo = "PRODUCT KEY WINDOWS"
+                Valor = Clean-SpecialCharacters $SystemData.PKEY
             }
         }
-        # Informações Detalhadas de Rede
-        if ($SystemData.NETDETAILS -and $SystemData.NETDETAILS.Count -gt 0) {
-            foreach ($nic in $SystemData.NETDETAILS) {
-                $csvData += [PSCustomObject]@{
-                    Categoria = "REDE"
-                    Campo = "INTERFACE $($nic.Nome) - TIPO"
-                    Valor = Clean-SpecialCharacters $nic.Tipo
-                }
-                $csvData += [PSCustomObject]@{
-                    Categoria = "REDE"
-                    Campo = "INTERFACE $($nic.Nome) - MAC"
-                    Valor = Clean-SpecialCharacters $nic.MAC
-                }
-                $csvData += [PSCustomObject]@{
-                    Categoria = "REDE"
-                    Campo = "INTERFACE $($nic.Nome) - IPV4"
-                    Valor = Clean-SpecialCharacters $nic.IPv4
-                }
-                $csvData += [PSCustomObject]@{
-                    Categoria = "REDE"
-                    Campo = "INTERFACE $($nic.Nome) - IPV6"
-                    Valor = Clean-SpecialCharacters $nic.IPv6
-                }
-                $csvData += [PSCustomObject]@{
-                    Categoria = "REDE"
-                    Campo = "INTERFACE $($nic.Nome) - MASCARA"
-                    Valor = Clean-SpecialCharacters $nic.Mascara
-                }
-                $csvData += [PSCustomObject]@{
-                    Categoria = "REDE"
-                    Campo = "INTERFACE $($nic.Nome) - GATEWAY"
-                    Valor = Clean-SpecialCharacters $nic.Gateway
-                }
-                $csvData += [PSCustomObject]@{
-                    Categoria = "REDE"
-                    Campo = "INTERFACE $($nic.Nome) - DNS"
-                    Valor = Clean-SpecialCharacters $nic.DNS
-                }
-                $csvData += [PSCustomObject]@{
-                    Categoria = "REDE"
-                    Campo = "INTERFACE $($nic.Nome) - STATUS"
-                    Valor = Clean-SpecialCharacters $nic.Status
-                }
-            }
-        }
-        # Informações de Segurança
-        $csvData += [PSCustomObject]@{
-            Categoria = "SEGURANCA"
-            Campo = "GRUPO/DOMINIO"
-            Valor = Clean-SpecialCharacters $SystemData.WorkgroupOrDomain
-        }
-        $csvData += [PSCustomObject]@{
-            Categoria = "SEGURANCA"
-            Campo = "ADMINISTRADORES LOCAIS"
-            Valor = Clean-SpecialCharacters $SystemData.LocalAdmins
-        }
-        $csvData += [PSCustomObject]@{
-            Categoria = "SEGURANCA"
-            Campo = "FIREWALL"
-            Valor = Clean-SpecialCharacters $SystemData.FirewallStatus
-        }
-        $csvData += [PSCustomObject]@{
-            Categoria = "SEGURANCA"
-            Campo = "ANTIVIRUS"
-            Valor = Clean-SpecialCharacters $SystemData.Antivirus
-        }
-        $csvData += [PSCustomObject]@{
-            Categoria = "SEGURANCA"
-            Campo = "ATUALIZACOES RECENTES"
-            Valor = Clean-SpecialCharacters $SystemData.RecentUpdates
-        }
-        $csvData += [PSCustomObject]@{
-            Categoria = "SEGURANCA"
-            Campo = "POLITICA DE SENHA"
-            Valor = Clean-SpecialCharacters $SystemData.PasswordPolicy
-        }
-        $csvData += [PSCustomObject]@{
-            Categoria = "SEGURANCA"
-            Campo = "COMPARTILHAMENTOS"
-            Valor = Clean-SpecialCharacters $SystemData.NetworkShares
-        }
-        $csvData += [PSCustomObject]@{
-            Categoria = "SEGURANCA"
-            Campo = "SERVICOS CRITICOS"
-            Valor = Clean-SpecialCharacters $SystemData.CriticalServices
-        }
-        $csvData += [PSCustomObject]@{
-            Categoria = "SEGURANCA"
-            Campo = "IP PUBLICO"
-            Valor = Clean-SpecialCharacters $SystemData.PublicIP
-        }
-        $csvData += [PSCustomObject]@{
-            Categoria = "SEGURANCA"
-            Campo = "BITLOCKER"
-            Valor = Clean-SpecialCharacters $SystemData.BitLocker
-        }
-        # Informações de Armazenamento
-        for ($i = 0; $i -lt $SystemData.DISKS.Count; $i++) {
-            $csvData += [PSCustomObject]@{
-                Categoria = "ARMAZENAMENTO"
-                Campo = "DISCO $($i + 1)"
-                Valor = Clean-SpecialCharacters $SystemData.DISKS[$i]
-            }
-        }
-        # Informações Adicionais
-        $csvData += [PSCustomObject]@{
-            Categoria = "INFORMACOES ADICIONAIS"
-            Campo = "DATA DE COLETA"
-            Valor = (Get-Date -Format "dd/MM/yyyy HH:mm:ss")
-        }
-        $csvData += [PSCustomObject]@{
-            Categoria = "INFORMACOES ADICIONAIS"
-            Campo = "USUARIO"
-            Valor = Clean-SpecialCharacters $env:USERNAME
-        }
-        $csvData += [PSCustomObject]@{
-            Categoria = "INFORMACOES ADICIONAIS"
-            Campo = "COMPUTADOR"
-            Valor = Clean-SpecialCharacters $env:COMPUTERNAME
-        }
-        # Gera CSV manualmente
+        # Gera CSV manualmente para melhor controle de codificacao
         $csvContent = "CATEGORIA,CAMPO,VALOR`n"
         foreach ($row in $csvData) {
             $categoria = $row.Categoria -replace '"', '""'
             $campo = $row.Campo -replace '"', '""'
             $valor = $row.Valor -replace '"', '""'
-            $csvContent += "`"$categoria`",`"$campo`",`"$valor`"`n"
+            $csvContent += "`"$categoria`"`,`"$campo`"`,`"$valor`"`n"
         }
+        # Permite exportação UTF-8 se desejado
         if ($Utf8) {
-            [System.IO.File]::WriteAllText($OutputPath, $csvContent, [System.Text.Encoding]::UTF8)
+            [System.IO.File]::WriteAllText($csvPath, $csvContent, [System.Text.Encoding]::UTF8)
         } else {
-            [System.IO.File]::WriteAllText($OutputPath, $csvContent, [System.Text.Encoding]::Default)
+            [System.IO.File]::WriteAllText($csvPath, $csvContent, [System.Text.Encoding]::Default)
         }
-        return @{ Path = $OutputPath; RecordCount = $csvData.Count }
+        return @{ Path = $csvPath; RecordCount = $csvData.Count }
     } catch {
         Write-Host "`n❌ Erro ao gerar arquivo CSV: $($_.Exception.Message)" -ForegroundColor Red
         return $null
     }
 }
-
 # Função para obter o serial (Product Key) do Windows
 function Get-WindowsProductKey {
     try {
-        $key = (Get-WmiObject -Query 'SELECT * FROM SoftwareLicensingService').OA3xOriginalProductKey
+        $key = (Get-WmiObject -query 'select * from SoftwareLicensingService').OA3xOriginalProductKey
         if ([string]::IsNullOrWhiteSpace($key)) {
             return "N/A"
         }
@@ -357,23 +126,22 @@ function Get-WindowsProductKey {
     }
 }
 
-
 # =============================================================================
-# SEQUÊNCIA DE LOADING VISUAL
+# SEQUENCIA DE LOADING VISUAL (opcional)
 # =============================================================================
 
 $loadingSteps = @(
-    "Carregando informações do sistema...",
-    "Coletando dados de hardware...",
-    "Verificando configurações de rede...",
-    "Analisando discos..."
+    "Carregando informacoes do sistema..."
+    "Carregando hardware..."
+    "Carregando informacoes de rede..."
+    "Carregando discos..."
 )
+# Permite desabilitar a limpeza de tela para execuções automatizadas
 param(
-    [switch]$NoClear,
-    [string]$OutputPath
+    [switch]$NoClear
 )
 Show-Loading $loadingSteps
-Start-Sleep -Milliseconds 300
+Start-Sleep -Milliseconds 500
 if (-not $NoClear) {
     Clear-Host
     try { $Host.UI.RawUI.CursorPosition = New-Object System.Management.Automation.Host.Coordinates 0, 0 } catch {}
@@ -409,6 +177,7 @@ function Get-CPUInfo {
     try {
         $c = Get-CimInstance Win32_Processor -ErrorAction Stop | Select-Object -First 1
         $baseGHz = [math]::Round($c.CurrentClockSpeed/1000,1)
+        $boostGHz = [math]::Round($c.MaxClockSpeed/1000,1)
         return "$($c.Name.Trim()) | Cores: $($c.NumberOfCores) | Threads: $($c.NumberOfLogicalProcessors) | Base: ${baseGHz}GHz"
     } catch {
         return 'N/A'
@@ -417,14 +186,13 @@ function Get-CPUInfo {
 $CPU = Get-CPUInfo
 
 # =============================================================================
-# COLETA DE DADOS DA MEMÓRIA RAM
+# COLETA DE DADOS DA MEMORIA RAM
 # =============================================================================
 
 function Get-RAMInfo {
     try {
-        $cs = Get-CimInstance Win32_ComputerSystem -ErrorAction Stop
         $memModules = Get-CimInstance Win32_PhysicalMemory -ErrorAction Stop
-        $RAMGB = [math]::Round($cs.TotalPhysicalMemory/1GB,0)
+        $RAMGB = [math]::Round((Get-CimInstance Win32_ComputerSystem -ErrorAction Stop).TotalPhysicalMemory/1GB,0)
         $RAM = "$RAMGB GB"
         $speedsList = $memModules | Select-Object -ExpandProperty Speed -Unique
         $Speeds = if ($speedsList) { ($speedsList -join ', ') + ' MHz' } else { 'N/A' }
@@ -445,12 +213,12 @@ $Channel = $ramInfo.Channel
 $Speeds = $ramInfo.Speeds
 
 # =============================================================================
-# COLETA DE DADOS DA PLACA DE VÍDEO
+# COLETA DE DADOS DA PLACA DE VIDEO
 # =============================================================================
 
 function Get-GPUInfo {
     try {
-        $g = Get-CimInstance Win32_VideoController -ErrorAction Stop | Where-Object { $_.AdapterRAM -gt 0 } | Select-Object -First 1
+        $g = Get-CimInstance Win32_VideoController -ErrorAction Stop | Select-Object -First 1
         return "$($g.Name) | $([math]::Round($g.AdapterRAM/1MB)) MB | Driver: $($g.DriverVersion)"
     } catch {
         return 'N/A'
@@ -494,11 +262,8 @@ function Get-NetworkInfo {
             Sort-Object -Property Name
         foreach ($nic in $allNics) {
             $conf = Get-CimInstance Win32_NetworkAdapterConfiguration -Filter "Index=$($nic.DeviceID)" -ErrorAction SilentlyContinue
-            $mac = if ($nic.MACAddress) {
-                [regex]::Replace($nic.MACAddress, "(.{2})(?!$)", "$1:")
-            } else {
-                'N/A'
-            }
+            $mac = $nic.MACAddress
+            if ($mac) { $mac = $mac -replace "(.{2})(?!$)", '${1}:' } else { $mac = 'N/A' }
             $isWifi = ($nic.AdapterType -match "Wireless") -or ($nic.Name -match "Wi.?Fi|802\.11|Wireless")
             $isVirtual = ($nic.Name -match "vEthernet|Hyper-V|Virtual|TAP|OpenVPN|Tailscale")
             $isBluetooth = ($nic.Name -match "Bluetooth")
@@ -515,7 +280,7 @@ function Get-NetworkInfo {
                 "    MAC Address        : $mac"
                 "    IPv4               : $ipv4"
                 "    IPv6               : $ipv6"
-                "    Máscara            : $mask"
+                "    Mascara            : $mask"
                 "    Gateway            : $gateway"
                 "    DNS                : $dnsString"
                 ""
@@ -563,32 +328,22 @@ function Get-DisksInfo {
 }
 $DISKS = Get-DisksInfo
 
-## Removido bloco de segurança para voltar ao básico
-$winKey = Get-WindowsProductKey
-$officeKey = Get-OfficeProductKey
-
 # =============================================================================
-# EXIBIÇÃO ESTILIZADA DOS RESULTADOS
+# EXIBICAO ESTILIZADA DOS RESULTADOS
 # =============================================================================
 
 Write-Header "Resumo do Sistema"
 Write-Field "Sistema Operacional" $SO
-Write-Field "Versão" $VERS
-Write-Field "Arquitetura" $ARCH
-Write-Field "Product Key Windows" (Mask-ProductKey $winKey)
-Write-Field "Product Key Office" (Mask-ProductKey $officeKey)
-Write-Footer
-
-## Removido bloco de exibição de segurança
+Write-Field "Versao"             $VERS
+Write-Field "Arquitetura"        $ARCH
 
 Write-Header "Hardware"
-Write-Field "Processador" $CPU
-Write-Field "Memória" "$RAM - $Channel - $Speeds"
-Write-Field "GPU" $GPU
-Write-Field "Placa-Mãe" $BOARD
-Write-Field "BIOS" $BIOS
-Write-Field "Número de Série" $SERIAL
-Write-Footer
+Write-Field "Processador"        $CPU
+Write-Field "Memoria"            "$RAM - $Channel - $Speeds"
+Write-Field "GPU"                $GPU
+Write-Field "Placa-Mae"          $BOARD
+Write-Field "BIOS"               $BIOS
+Write-Field "Número de Série"    $SERIAL
 
 Write-Header "Rede"
 if ($NET -is [array]) {
@@ -598,34 +353,41 @@ if ($NET -is [array]) {
     Write-Field "Rede" $NET
     Write-Host $NETINFO
 }
-Write-Footer
 
 Write-Header "Discos"
 foreach ($d in $DISKS) {
-    Write-Host "  $d" -ForegroundColor White
+    Write-Host "  $d"
 }
-Write-Footer
 
 # =============================================================================
-# OPÇÃO DE EXPORTAÇÃO PARA CSV
+# OPCAO DE EXPORTACAO PARA CSV
 # =============================================================================
 
-Write-Header "Opções Adicionais"
-Write-Host "1 - Gerar arquivo CSV com todas as informações"
-Write-Host "2 - Sair"
-Write-Host "`nEscolha uma opção (1 ou 2): " -NoNewline -ForegroundColor Yellow
-$choice = Read-Host
+Write-Host "`n" -NoNewline
+Write-Host "==============================================" -ForegroundColor Magenta
+Write-Host "              OPCOES ADICIONAIS              " -ForegroundColor Magenta
+Write-Host "==============================================" -ForegroundColor Magenta
 
-while ($choice -ne "1" -and $choice -ne "2") {
-    Write-Host "`nOpção inválida! Digite 1 ou 2." -ForegroundColor Red
-    Start-Sleep -Seconds 1
-    if (-not $NoClear) { Clear-Host }
-    Write-Header "Opções Adicionais"
-    Write-Host "1 - Gerar arquivo CSV com todas as informações"
+do {
+    Write-Host "`n1 - Gerar arquivo CSV com todas as informacoes"
     Write-Host "2 - Sair"
-    Write-Host "`nEscolha uma opção (1 ou 2): " -NoNewline -ForegroundColor Yellow
+    Write-Host "`nEscolha uma opcao (1 ou 2): " -NoNewline -ForegroundColor Yellow
+    
     $choice = Read-Host
-}
+    
+    if ($choice -eq "1") {
+        break
+    } elseif ($choice -eq "2") {
+        break
+    } else {
+        Write-Host "`nOpcao invalida! Digite 1 ou 2." -ForegroundColor Red
+        Start-Sleep -Seconds 1
+        Clear-Host
+        Write-Host "==============================================" -ForegroundColor Magenta
+        Write-Host "              OPCOES ADICIONAIS              " -ForegroundColor Magenta
+        Write-Host "==============================================" -ForegroundColor Magenta
+    }
+} while ($true)
 
 if ($choice -eq "1") {
     # Cria hashtable com todos os dados coletados
@@ -645,24 +407,27 @@ if ($choice -eq "1") {
         NETINFO = $NETINFO
         NETDETAILS = $NETDETAILS
         DISKS = $DISKS
-        PKEY = $winKey
-        OFFICEKEY = $officeKey
-        # Campos de segurança removidos
+        PKEY = Get-WindowsProductKey
     }
     # Gera o arquivo CSV
-    $csvResult = Export-SystemInfoToCSV -SystemData $systemData -OutputPath $OutputPath -Utf8
+    $csvResult = Export-SystemInfoToCSV -SystemData $systemData
     if ($csvResult) {
-        Write-Header "Arquivo Gerado com Sucesso"
-        Write-Host "Localização: $($csvResult.Path)" -ForegroundColor Cyan
-        Write-Host "Total de informações coletadas: $($csvResult.RecordCount) registros" -ForegroundColor Magenta
-        Write-Host "Você pode abrir o arquivo no Excel ou em qualquer editor de planilhas." -ForegroundColor Yellow
-        Write-Footer
+        Write-Host "`n" -NoNewline
+        Write-Host "===============================================" -ForegroundColor Green
+        Write-Host "        ARQUIVO GERADO COM SUCESSO!        " -ForegroundColor Green
+        Write-Host "===============================================" -ForegroundColor Green
+        Write-Host "`nLocalizacao: $($csvResult.Path)" -ForegroundColor Cyan
+        Write-Host "Voce pode abrir o arquivo no Excel ou em qualquer editor de planilhas." -ForegroundColor Yellow
+        Write-Host "Total de informacoes coletadas: $($csvResult.RecordCount) registros" -ForegroundColor Magenta
+        Write-Host "`n" -NoNewline
+        Write-Host "==================================================" -ForegroundColor Gray
         Write-Host "`nObrigado por usar o System Information Tool!" -ForegroundColor Cyan
-        Write-Host "GitHub: https://github.com/TRogato/system-info-tool" -ForegroundColor Yellow
+        Write-Host "GitHub: https://github.com/isaacoolibama/system-info-tool" -ForegroundColor Yellow
         Write-Host "`nPressione qualquer tecla para sair..." -ForegroundColor Gray
         $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
         [Environment]::Exit(0)
     }
 } elseif ($choice -eq "2") {
+    # Fecha o terminal completamente
     [Environment]::Exit(0)
 }
