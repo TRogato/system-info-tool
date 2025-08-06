@@ -28,35 +28,37 @@
 # =============================================================================
 # COLETA E EXIBICAO DE USUARIOS E GRUPOS LOCAIS
 # =============================================================================
-        # Usuarios locais
-        if ($SystemData.LocalUsers -and $SystemData.LocalUsers.Count -gt 0) {
-            foreach ($u in $SystemData.LocalUsers) {
-                $status = if ($u.Enabled) { "Ativo" } else { "Desabilitado" }
-                $admin = try {
-                    if ($u.Name -in (Get-LocalGroupMember -Group "Administradores" | Select-Object -ExpandProperty Name -ErrorAction SilentlyContinue)) { "(Admin)" } else { "" }
-                } catch { "" }
-                $csvData += [PSCustomObject]@{
-                    Categoria = "USUARIOS LOCAIS"
-                    Campo = $u.Name
-                    Valor = ("Status: $status $admin | Ultimo Logon: $($u.LastLogon) | Expira Senha: $($u.PasswordExpired) | Nunca Expira: $($u.PasswordNeverExpires)")
-                }
-            }
+# Usuarios locais
+if ($SystemData.LocalUsers -and $SystemData.LocalUsers.Count -gt 0) {
+    foreach ($u in $SystemData.LocalUsers) {
+        $status = if ($u.Enabled) { "Ativo" } else { "Desabilitado" }
+        $admin = try {
+            if ($u.Name -in (Get-LocalGroupMember -Group "Administradores" | Select-Object -ExpandProperty Name -ErrorAction SilentlyContinue)) { "(Admin)" } else { "" }
         }
-        # Grupos locais
-        if ($SystemData.LocalGroups -and $SystemData.LocalGroups.Count -gt 0) {
-            foreach ($g in $SystemData.LocalGroups) {
-                $csvData += [PSCustomObject]@{
-                    Categoria = "GRUPOS LOCAIS"
-                    Campo = $g.Group
-                    Valor = $g.Members
-                }
-            }
+        catch { "" }
+        $csvData += [PSCustomObject]@{
+            Categoria = "USUARIOS LOCAIS"
+            Campo     = $u.Name
+            Valor     = ("Status: $status $admin | Ultimo Logon: $($u.LastLogon) | Expira Senha: $($u.PasswordExpired) | Nunca Expira: $($u.PasswordNeverExpires)")
         }
+    }
+}
+# Grupos locais
+if ($SystemData.LocalGroups -and $SystemData.LocalGroups.Count -gt 0) {
+    foreach ($g in $SystemData.LocalGroups) {
+        $csvData += [PSCustomObject]@{
+            Categoria = "GRUPOS LOCAIS"
+            Campo     = $g.Group
+            Valor     = $g.Members
+        }
+    }
+}
 # Coleta usuarios locais
 $LocalUsers = @()
 try {
-    $LocalUsers = Get-LocalUser | Select-Object Name,Enabled,Description,LastLogon,PasswordNeverExpires,PasswordExpired,UserMayChangePassword,PrincipalSource
-} catch {
+    $LocalUsers = Get-LocalUser | Select-Object Name, Enabled, Description, LastLogon, PasswordNeverExpires, PasswordExpired, UserMayChangePassword, PrincipalSource
+}
+catch {
     $LocalUsers = @()
 }
 
@@ -68,13 +70,15 @@ try {
         $members = @()
         try {
             $members = Get-LocalGroupMember -Group $groupName | Select-Object -ExpandProperty Name
-        } catch { $members = @() }
+        }
+        catch { $members = @() }
         [PSCustomObject]@{
-            Group = $groupName
+            Group   = $groupName
             Members = if ($members) { $members -join ", " } else { "(Sem membros)" }
         }
     }
-} catch {
+}
+catch {
     $LocalGroups = @()
 }
 
@@ -85,7 +89,8 @@ if ($LocalUsers.Count -gt 0) {
         $admin = if ($u.Name -in (Get-LocalGroupMember -Group "Administradores" | Select-Object -ExpandProperty Name -ErrorAction SilentlyContinue)) { "(Admin)" } else { "" }
         Write-Host ("{0,-20} {1,-12} {2}" -f $u.Name, $status, $admin)
     }
-} else {
+}
+else {
     Write-Host "Nao foi possivel obter usuarios locais ou nenhum usuario encontrado." -ForegroundColor Yellow
 }
 
@@ -94,7 +99,8 @@ if ($LocalGroups.Count -gt 0) {
     foreach ($g in $LocalGroups) {
         Write-Host ("{0,-20} Membros: {1}" -f $g.Group, $g.Members)
     }
-} else {
+}
+else {
     Write-Host "Nao foi possivel obter grupos locais ou nenhum grupo encontrado." -ForegroundColor Yellow
 }
 
@@ -178,43 +184,43 @@ function Export-SystemInfoToCSV {
         # Informacoes do Hardware
         $csvData += [PSCustomObject]@{
             Categoria = "HARDWARE"
-            Campo = "PROCESSADOR"
-            Valor = Clean-SpecialCharacters $SystemData.CPU
+            Campo     = "PROCESSADOR"
+            Valor     = Clean-SpecialCharacters $SystemData.CPU
         }
         $csvData += [PSCustomObject]@{
             Categoria = "HARDWARE"
-            Campo = "MEMORIA RAM"
-            Valor = Clean-SpecialCharacters $SystemData.RAM
+            Campo     = "MEMORIA RAM"
+            Valor     = Clean-SpecialCharacters $SystemData.RAM
         }
         $csvData += [PSCustomObject]@{
             Categoria = "HARDWARE"
-            Campo = "CONFIGURACAO DE CANAIS"
-            Valor = Clean-SpecialCharacters $SystemData.Channel
+            Campo     = "CONFIGURACAO DE CANAIS"
+            Valor     = Clean-SpecialCharacters $SystemData.Channel
         }
         $csvData += [PSCustomObject]@{
             Categoria = "HARDWARE"
-            Campo = "VELOCIDADE DA MEMORIA"
-            Valor = Clean-SpecialCharacters $SystemData.Speeds
+            Campo     = "VELOCIDADE DA MEMORIA"
+            Valor     = Clean-SpecialCharacters $SystemData.Speeds
         }
         $csvData += [PSCustomObject]@{
             Categoria = "HARDWARE"
-            Campo = "PLACA DE VIDEO"
-            Valor = Clean-SpecialCharacters $SystemData.GPU
+            Campo     = "PLACA DE VIDEO"
+            Valor     = Clean-SpecialCharacters $SystemData.GPU
         }
         $csvData += [PSCustomObject]@{
             Categoria = "HARDWARE"
-            Campo = "PLACA-MAE"
-            Valor = Clean-SpecialCharacters $SystemData.BOARD
+            Campo     = "PLACA-MAE"
+            Valor     = Clean-SpecialCharacters $SystemData.BOARD
         }
         $csvData += [PSCustomObject]@{
             Categoria = "HARDWARE"
-            Campo = "BIOS"
-            Valor = Clean-SpecialCharacters $SystemData.BIOS
+            Campo     = "BIOS"
+            Valor     = Clean-SpecialCharacters $SystemData.BIOS
         }
         $csvData += [PSCustomObject]@{
             Categoria = "HARDWARE"
-            Campo = "NUMERO DE SERIE"
-            Valor = Clean-SpecialCharacters $SystemData.SERIAL
+            Campo     = "NUMERO DE SERIE"
+            Valor     = Clean-SpecialCharacters $SystemData.SERIAL
         }
         
         # Informacoes de Rede
@@ -222,15 +228,16 @@ function Export-SystemInfoToCSV {
             for ($i = 0; $i -lt $SystemData.NET.Count; $i++) {
                 $csvData += [PSCustomObject]@{
                     Categoria = "REDE"
-                    Campo = "INTERFACE $($i + 1)"
-                    Valor = Clean-SpecialCharacters $SystemData.NET[$i]
+                    Campo     = "INTERFACE $($i + 1)"
+                    Valor     = Clean-SpecialCharacters $SystemData.NET[$i]
                 }
             }
-        } else {
+        }
+        else {
             $csvData += [PSCustomObject]@{
                 Categoria = "REDE"
-                Campo = "INTERFACES"
-                Valor = Clean-SpecialCharacters $SystemData.NET
+                Campo     = "INTERFACES"
+                Valor     = Clean-SpecialCharacters $SystemData.NET
             }
         }
         
@@ -239,43 +246,43 @@ function Export-SystemInfoToCSV {
             foreach ($nic in $SystemData.NETDETAILS) {
                 $csvData += [PSCustomObject]@{
                     Categoria = "REDE"
-                    Campo = "INTERFACE $($nic.Nome) - TIPO"
-                    Valor = Clean-SpecialCharacters $nic.Tipo
+                    Campo     = "INTERFACE $($nic.Nome) - TIPO"
+                    Valor     = Clean-SpecialCharacters $nic.Tipo
                 }
                 $csvData += [PSCustomObject]@{
                     Categoria = "REDE"
-                    Campo = "INTERFACE $($nic.Nome) - MAC"
-                    Valor = Clean-SpecialCharacters $nic.MAC
+                    Campo     = "INTERFACE $($nic.Nome) - MAC"
+                    Valor     = Clean-SpecialCharacters $nic.MAC
                 }
                 $csvData += [PSCustomObject]@{
                     Categoria = "REDE"
-                    Campo = "INTERFACE $($nic.Nome) - IPV4"
-                    Valor = Clean-SpecialCharacters $nic.IPv4
+                    Campo     = "INTERFACE $($nic.Nome) - IPV4"
+                    Valor     = Clean-SpecialCharacters $nic.IPv4
                 }
                 $csvData += [PSCustomObject]@{
                     Categoria = "REDE"
-                    Campo = "INTERFACE $($nic.Nome) - IPV6"
-                    Valor = Clean-SpecialCharacters $nic.IPv6
+                    Campo     = "INTERFACE $($nic.Nome) - IPV6"
+                    Valor     = Clean-SpecialCharacters $nic.IPv6
                 }
                 $csvData += [PSCustomObject]@{
                     Categoria = "REDE"
-                    Campo = "INTERFACE $($nic.Nome) - MASCARA"
-                    Valor = Clean-SpecialCharacters $nic.Mascara
+                    Campo     = "INTERFACE $($nic.Nome) - MASCARA"
+                    Valor     = Clean-SpecialCharacters $nic.Mascara
                 }
                 $csvData += [PSCustomObject]@{
                     Categoria = "REDE"
-                    Campo = "INTERFACE $($nic.Nome) - GATEWAY"
-                    Valor = Clean-SpecialCharacters $nic.Gateway
+                    Campo     = "INTERFACE $($nic.Nome) - GATEWAY"
+                    Valor     = Clean-SpecialCharacters $nic.Gateway
                 }
                 $csvData += [PSCustomObject]@{
                     Categoria = "REDE"
-                    Campo = "INTERFACE $($nic.Nome) - DNS"
-                    Valor = Clean-SpecialCharacters $nic.DNS
+                    Campo     = "INTERFACE $($nic.Nome) - DNS"
+                    Valor     = Clean-SpecialCharacters $nic.DNS
                 }
                 $csvData += [PSCustomObject]@{
                     Categoria = "REDE"
-                    Campo = "INTERFACE $($nic.Nome) - STATUS"
-                    Valor = Clean-SpecialCharacters $nic.Status
+                    Campo     = "INTERFACE $($nic.Nome) - STATUS"
+                    Valor     = Clean-SpecialCharacters $nic.Status
                 }
             }
         }
@@ -284,26 +291,42 @@ function Export-SystemInfoToCSV {
         for ($i = 0; $i -lt $SystemData.DISKS.Count; $i++) {
             $csvData += [PSCustomObject]@{
                 Categoria = "ARMAZENAMENTO"
-                Campo = "DISCO $($i + 1)"
-                Valor = Clean-SpecialCharacters $SystemData.DISKS[$i]
+                Campo     = "DISCO $($i + 1)"
+                Valor     = Clean-SpecialCharacters $SystemData.DISKS[$i]
             }
         }
         
+        # Windows Update
+        $csvData += [PSCustomObject]@{
+            Categoria = "WINDOWS UPDATE"
+            Campo     = "STATUS DO SERVICO"
+            Valor     = Clean-SpecialCharacters $SystemData.WUStatus
+        }
+        if ($SystemData.LastUpdates -and $SystemData.LastUpdates.Count -gt 0) {
+            foreach ($u in $SystemData.LastUpdates) {
+                $csvData += [PSCustomObject]@{
+                    Categoria = "WINDOWS UPDATE"
+                    Campo     = "KB: $($u.KB)"
+                    Valor     = "Data: $($u.InstalledOn) $($u.Description)"
+                }
+            }
+        }
+
         # Informacoes Adicionais
         $csvData += [PSCustomObject]@{
             Categoria = "INFORMACOES ADICIONAIS"
-            Campo = "DATA DE COLETA"
-            Valor = (Get-Date -Format "dd/MM/yyyy HH:mm:ss").ToUpper()
+            Campo     = "DATA DE COLETA"
+            Valor     = (Get-Date -Format "dd/MM/yyyy HH:mm:ss").ToUpper()
         }
         $csvData += [PSCustomObject]@{
             Categoria = "INFORMACOES ADICIONAIS"
-            Campo = "USUARIO"
-            Valor = Clean-SpecialCharacters $env:USERNAME
+            Campo     = "USUARIO"
+            Valor     = Clean-SpecialCharacters $env:USERNAME
         }
         $csvData += [PSCustomObject]@{
             Categoria = "INFORMACOES ADICIONAIS"
-            Campo = "COMPUTADOR"
-            Valor = Clean-SpecialCharacters $env:COMPUTERNAME
+            Campo     = "COMPUTADOR"
+            Valor     = Clean-SpecialCharacters $env:COMPUTERNAME
         }
         
         # Gera CSV manualmente para melhor controle de codificacao
@@ -319,7 +342,7 @@ function Export-SystemInfoToCSV {
         [System.IO.File]::WriteAllText($csvPath, $csvContent, [System.Text.Encoding]::Default)
         
         return @{
-            Path = $csvPath
+            Path        = $csvPath
             RecordCount = $csvData.Count
         }
     }
@@ -353,10 +376,10 @@ $Host.UI.RawUI.CursorPosition = New-Object System.Management.Automation.Host.Coo
 # =============================================================================
 
 # Obtem informacoes basicas do sistema operacional
-$o          = Get-CimInstance Win32_OperatingSystem -ErrorAction SilentlyContinue
-$SO         = $o.Caption
-$VERS       = "v$($o.Version) Build $($o.BuildNumber)"
-$ARCH       = $o.OSArchitecture
+$o = Get-CimInstance Win32_OperatingSystem -ErrorAction SilentlyContinue
+$SO = $o.Caption
+$VERS = "v$($o.Version) Build $($o.BuildNumber)"
+$ARCH = $o.OSArchitecture
 
 # Obtem status de ativação e tipo de licença
 try {
@@ -377,10 +400,12 @@ try {
             '*Volume*' { 'Volume' }
             default { $lic.ProductKeyChannel }
         }
-    } else {
+    }
+    else {
         'Desconhecido'
     }
-} catch {
+}
+catch {
     $activationStatus = 'Desconhecido'
     $licenseType = 'Desconhecido'
 }
@@ -390,10 +415,10 @@ try {
 # =============================================================================
 
 # Obtem informacoes detalhadas do processador
-$c          = Get-CimInstance Win32_Processor -ErrorAction SilentlyContinue | Select-Object -First 1
-$baseGHz    = [math]::Round($c.CurrentClockSpeed/1000,1)
-$boostGHz   = [math]::Round($c.MaxClockSpeed/1000,1)
-$CPU        = "$($c.Name.Trim()) | Cores: $($c.NumberOfCores) | Threads: $($c.NumberOfLogicalProcessors) | Base: ${baseGHz}GHz"
+$c = Get-CimInstance Win32_Processor -ErrorAction SilentlyContinue | Select-Object -First 1
+$baseGHz = [math]::Round($c.CurrentClockSpeed / 1000, 1)
+$boostGHz = [math]::Round($c.MaxClockSpeed / 1000, 1)
+$CPU = "$($c.Name.Trim()) | Cores: $($c.NumberOfCores) | Threads: $($c.NumberOfLogicalProcessors) | Base: ${baseGHz}GHz"
 
 # =============================================================================
 # COLETA DE DADOS DA MEMORIA RAM
@@ -401,15 +426,15 @@ $CPU        = "$($c.Name.Trim()) | Cores: $($c.NumberOfCores) | Threads: $($c.Nu
 
 # Obtem informacoes dos modulos de memoria fisica
 $memModules = Get-CimInstance Win32_PhysicalMemory -ErrorAction SilentlyContinue
-$RAMGB      = [math]::Round((Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory/1GB,0)
-$RAM        = "$RAMGB GB"
+$RAMGB = [math]::Round((Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory / 1GB, 0)
+$RAM = "$RAMGB GB"
 
 # Determina as velocidades dos modulos de memoria
 $speedsList = $memModules | Select-Object -ExpandProperty Speed -Unique
-$Speeds     = if ($speedsList) { ($speedsList -join ', ') + ' MHz' } else { 'N/A' }
+$Speeds = if ($speedsList) { ($speedsList -join ', ') + ' MHz' } else { 'N/A' }
 
 # Determina a configuracao de canais baseada no numero de modulos
-$Channel    = switch ($memModules.Count) {
+$Channel = switch ($memModules.Count) {
     1 { 'Single Channel' }
     2 { 'Dual Channel' }
     4 { 'Quad Channel' }
@@ -421,24 +446,24 @@ $Channel    = switch ($memModules.Count) {
 # =============================================================================
 
 # Obtem informacoes da placa de video principal
-$g          = Get-CimInstance Win32_VideoController -ErrorAction SilentlyContinue | Select-Object -First 1
-$GPU        = "$($g.Name) | $([math]::Round($g.AdapterRAM/1MB)) MB | Driver: $($g.DriverVersion)"
+$g = Get-CimInstance Win32_VideoController -ErrorAction SilentlyContinue | Select-Object -First 1
+$GPU = "$($g.Name) | $([math]::Round($g.AdapterRAM/1MB)) MB | Driver: $($g.DriverVersion)"
 
 # =============================================================================
 # COLETA DE DADOS DO SISTEMA E BIOS
 # =============================================================================
 
 # Obtem numero de serie do produto
-$prod       = Get-CimInstance Win32_ComputerSystemProduct -ErrorAction SilentlyContinue
-$SERIAL     = if ($prod.IdentifyingNumber) { $prod.IdentifyingNumber } else { 'N/A' }
+$prod = Get-CimInstance Win32_ComputerSystemProduct -ErrorAction SilentlyContinue
+$SERIAL = if ($prod.IdentifyingNumber) { $prod.IdentifyingNumber } else { 'N/A' }
 
 # Obtem informacoes do BIOS
-$b          = Get-CimInstance Win32_BIOS -ErrorAction SilentlyContinue
-$BIOS       = "$($b.Manufacturer) v$($b.SMBIOSBIOSVersion) ($(Get-Date $b.ReleaseDate -Format 'dd/MM/yyyy'))"
+$b = Get-CimInstance Win32_BIOS -ErrorAction SilentlyContinue
+$BIOS = "$($b.Manufacturer) v$($b.SMBIOSBIOSVersion) ($(Get-Date $b.ReleaseDate -Format 'dd/MM/yyyy'))"
 
 # Obtem informacoes da placa-mae
-$mb         = Get-CimInstance Win32_BaseBoard -ErrorAction SilentlyContinue
-$BOARD      = "$($mb.Manufacturer) $($mb.Product) S/N: $($mb.SerialNumber)"
+$mb = Get-CimInstance Win32_BaseBoard -ErrorAction SilentlyContinue
+$BOARD = "$($mb.Manufacturer) $($mb.Product) S/N: $($mb.SerialNumber)"
 
 # =============================================================================
 # COLETA DE DADOS DE REDE (APRIMORADA)
@@ -446,8 +471,8 @@ $BOARD      = "$($mb.Manufacturer) $($mb.Product) S/N: $($mb.SerialNumber)"
 
 # Obtem todos os adaptadores de rede ativos
 $allNics = Get-CimInstance Win32_NetworkAdapter -ErrorAction SilentlyContinue |
-           Where-Object { $_.NetEnabled -eq $true } | 
-           Sort-Object -Property Name
+Where-Object { $_.NetEnabled -eq $true } | 
+Sort-Object -Property Name
 
 $NET = @()
 $NETINFO = @()
@@ -461,7 +486,8 @@ foreach ($nic in $allNics) {
     $mac = $nic.MACAddress
     if ($mac) {
         $mac = $mac -replace "(.{2})(?!$)", '${1}:'
-    } else {
+    }
+    else {
         $mac = 'N/A'
     }
     
@@ -471,21 +497,22 @@ foreach ($nic in $allNics) {
     $isBluetooth = ($nic.Name -match "Bluetooth")
     
     $tipoCon = if ($isWifi) { "WiFi" } 
-               elseif ($isVirtual) { "Virtual" }
-               elseif ($isBluetooth) { "Bluetooth" }
-               else { "Ethernet" }
+    elseif ($isVirtual) { "Virtual" }
+    elseif ($isBluetooth) { "Bluetooth" }
+    else { "Ethernet" }
 
     # Extrai informacoes de rede
-    $ipv4     = $conf.IPAddress          | Where-Object { $_ -match "\." } | Select-Object -First 1
-    $ipv6     = $conf.IPAddress          | Where-Object { $_ -match ":" } | Select-Object -First 1
-    $mask     = $conf.IPSubnet           | Where-Object { $_ -match "\." } | Select-Object -First 1
-    $gateway  = $conf.DefaultIPGateway   | Where-Object { $_ -match "\." } | Select-Object -First 1
-    $dns      = $conf.DNSServerSearchOrder | Where-Object { $_ -match "\." }
+    $ipv4 = $conf.IPAddress          | Where-Object { $_ -match "\." } | Select-Object -First 1
+    $ipv6 = $conf.IPAddress          | Where-Object { $_ -match ":" } | Select-Object -First 1
+    $mask = $conf.IPSubnet           | Where-Object { $_ -match "\." } | Select-Object -First 1
+    $gateway = $conf.DefaultIPGateway   | Where-Object { $_ -match "\." } | Select-Object -First 1
+    $dns = $conf.DNSServerSearchOrder | Where-Object { $_ -match "\." }
 
     # Formata servidores DNS
     if ($dns) {
         $dnsString = $dns -join ", "
-    } else {
+    }
+    else {
         $dnsString = "N/A"
     }
 
@@ -504,15 +531,15 @@ foreach ($nic in $allNics) {
     
     # Cria objeto detalhado para CSV
     $NETDETAILS += [PSCustomObject]@{
-        Nome = $nic.Name
-        Tipo = $tipoCon
-        MAC = $mac
-        IPv4 = $ipv4
-        IPv6 = $ipv6
+        Nome    = $nic.Name
+        Tipo    = $tipoCon
+        MAC     = $mac
+        IPv4    = $ipv4
+        IPv6    = $ipv6
         Mascara = $mask
         Gateway = $gateway
-        DNS = $dnsString
-        Status = if ($nic.NetEnabled) { "Ativo" } else { "Inativo" }
+        DNS     = $dnsString
+        Status  = if ($nic.NetEnabled) { "Ativo" } else { "Inativo" }
     }
 }
 
@@ -528,8 +555,8 @@ if ($NET.Count -eq 0) {
 # =============================================================================
 
 # Obtem informacoes de todos os discos fisicos
-$DISKS      = Get-CimInstance Win32_DiskDrive -ErrorAction SilentlyContinue |
-              ForEach-Object { "{0}: {1:N1} GB ({2})" -f $_.Model, ($_.Size/1GB), $_.InterfaceType }
+$DISKS = Get-CimInstance Win32_DiskDrive -ErrorAction SilentlyContinue |
+ForEach-Object { "{0}: {1:N1} GB ({2})" -f $_.Model, ($_.Size / 1GB), $_.InterfaceType }
 
 # =============================================================================
 # EXIBICAO ESTILIZADA DOS RESULTADOS
@@ -552,7 +579,8 @@ Write-Header "Rede"
 if ($NET -is [array]) {
     Write-Host "Interfaces de Rede Ativas:" -ForegroundColor Cyan
     Write-Host $NETINFO
-} else {
+}
+else {
     Write-Field "Rede" $NET
     Write-Host $NETINFO
 }
@@ -562,6 +590,47 @@ foreach ($d in $DISKS) {
     Write-Host "  $d"
 }
 
+# =============================================================================
+# COLETA DE ATUALIZACOES DO WINDOWS
+# =============================================================================
+
+# Ultimas atualizacoes instaladas (KB, data)
+$LastUpdates = @()
+try {
+    $LastUpdates = Get-HotFix | Sort-Object -Property InstalledOn -Descending | Select-Object -First 5 | ForEach-Object {
+        [PSCustomObject]@{
+            KB          = $_.HotFixID
+            Description = $_.Description
+            InstalledOn = $_.InstalledOn
+        }
+    }
+}
+catch {
+    $LastUpdates = @()
+}
+
+# Status do Windows Update
+$WUStatus = $null
+try {
+    $WUService = Get-Service -Name wuauserv -ErrorAction Stop
+    $WUStatus = if ($WUService.Status -eq 'Running') { 'Ativo' } else { 'Inativo' }
+}
+catch {
+    $WUStatus = 'Desconhecido'
+}
+
+# Exibe informações de atualizações do Windows
+Write-Header "Windows Update"
+Write-Field "Status do Servico" $WUStatus
+if ($LastUpdates.Count -gt 0) {
+    Write-Host "Ultimas Atualizacoes Instaladas:" -ForegroundColor Cyan
+    foreach ($u in $LastUpdates) {
+        Write-Host ("  KB: {0,-10} Data: {1,-12} {2}" -f $u.KB, $u.InstalledOn, $u.Description)
+    }
+}
+else {
+    Write-Host "Nao foi possivel obter as ultimas atualizacoes." -ForegroundColor Yellow
+}
 # =============================================================================
 # OPCAO DE EXPORTACAO PARA CSV
 # =============================================================================
@@ -580,9 +649,11 @@ do {
     
     if ($choice -eq "1") {
         break
-    } elseif ($choice -eq "2") {
+    }
+    elseif ($choice -eq "2") {
         break
-    } else {
+    }
+    else {
         Write-Host "`nOpcao invalida! Digite 1 ou 2." -ForegroundColor Red
         Start-Sleep -Seconds 1
         Clear-Host
@@ -594,26 +665,28 @@ do {
 
 if ($choice -eq "1") {
     # Cria hashtable com todos os dados coletados
-        $systemData = @{
-        SO = $SO
-        VERS = $VERS
-        ARCH = $ARCH
+    $systemData = @{
+        SO               = $SO
+        VERS             = $VERS
+        ARCH             = $ARCH
         ActivationStatus = $activationStatus
-        LicenseType = $licenseType
-        CPU = $CPU
-        RAM = $RAM
-        Channel = $Channel
-        Speeds = $Speeds
-        GPU = $GPU
-        BOARD = $BOARD
-        BIOS = $BIOS
-        SERIAL = $SERIAL
-        NET = $NET
-        NETINFO = $NETINFO
-        NETDETAILS = $NETDETAILS
-        DISKS = $DISKS
-        LocalUsers = $LocalUsers
-        LocalGroups = $LocalGroups
+        LicenseType      = $licenseType
+        CPU              = $CPU
+        RAM              = $RAM
+        Channel          = $Channel
+        Speeds           = $Speeds
+        GPU              = $GPU
+        BOARD            = $BOARD
+        BIOS             = $BIOS
+        SERIAL           = $SERIAL
+        NET              = $NET
+        NETINFO          = $NETINFO
+        NETDETAILS       = $NETDETAILS
+        DISKS            = $DISKS
+        LocalUsers       = $LocalUsers
+        LocalGroups      = $LocalGroups
+        LastUpdates      = $LastUpdates
+        WUStatus         = $WUStatus
     }
     # Gera o arquivo CSV
     $csvResult = Export-SystemInfoToCSV -SystemData $systemData
@@ -633,7 +706,8 @@ if ($choice -eq "1") {
         $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
         [Environment]::Exit(0)
     }
-} elseif ($choice -eq "2") {
+}
+elseif ($choice -eq "2") {
     # Fecha o terminal completamente
     [Environment]::Exit(0)
 }
