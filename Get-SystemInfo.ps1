@@ -84,15 +84,60 @@ function Export-SystemInfoToCSV {
         $timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
         $csvPath = Join-Path $desktopPath "SystemInfo_$timestamp.csv"
         $csvData = @()
-        # ...existing code...
-        # Adiciona Product Key do Windows se existir
-        if ($SystemData.PKEY) {
+        # SISTEMA OPERACIONAL
+        $csvData += [PSCustomObject]@{ Categoria = "SISTEMA OPERACIONAL"; Campo = "NOME"; Valor = Clean-SpecialCharacters $SystemData.SO }
+        $csvData += [PSCustomObject]@{ Categoria = "SISTEMA OPERACIONAL"; Campo = "VERSAO"; Valor = Clean-SpecialCharacters $SystemData.VERS }
+        $csvData += [PSCustomObject]@{ Categoria = "SISTEMA OPERACIONAL"; Campo = "ARQUITETURA"; Valor = Clean-SpecialCharacters $SystemData.ARCH }
+        $csvData += [PSCustomObject]@{ Categoria = "SISTEMA OPERACIONAL"; Campo = "PRODUCT KEY WINDOWS"; Valor = Clean-SpecialCharacters $SystemData.PKEY }
+        # HARDWARE
+        $csvData += [PSCustomObject]@{ Categoria = "HARDWARE"; Campo = "PROCESSADOR"; Valor = Clean-SpecialCharacters $SystemData.CPU }
+        $csvData += [PSCustomObject]@{ Categoria = "HARDWARE"; Campo = "MEMORIA RAM"; Valor = Clean-SpecialCharacters $SystemData.RAM }
+        $csvData += [PSCustomObject]@{ Categoria = "HARDWARE"; Campo = "CONFIGURACAO DE CANAIS"; Valor = Clean-SpecialCharacters $SystemData.Channel }
+        $csvData += [PSCustomObject]@{ Categoria = "HARDWARE"; Campo = "VELOCIDADE DA MEMORIA"; Valor = Clean-SpecialCharacters $SystemData.Speeds }
+        $csvData += [PSCustomObject]@{ Categoria = "HARDWARE"; Campo = "PLACA DE VIDEO"; Valor = Clean-SpecialCharacters $SystemData.GPU }
+        $csvData += [PSCustomObject]@{ Categoria = "HARDWARE"; Campo = "PLACA-MAE"; Valor = Clean-SpecialCharacters $SystemData.BOARD }
+        $csvData += [PSCustomObject]@{ Categoria = "HARDWARE"; Campo = "BIOS"; Valor = Clean-SpecialCharacters $SystemData.BIOS }
+        $csvData += [PSCustomObject]@{ Categoria = "HARDWARE"; Campo = "NUMERO DE SERIE"; Valor = Clean-SpecialCharacters $SystemData.SERIAL }
+        # REDE
+        if ($SystemData.NET -is [array]) {
+            for ($i = 0; $i -lt $SystemData.NET.Count; $i++) {
+                $csvData += [PSCustomObject]@{
+                    Categoria = "REDE"
+                    Campo = "INTERFACE $($i + 1)"
+                    Valor = Clean-SpecialCharacters $SystemData.NET[$i]
+                }
+            }
+        } else {
             $csvData += [PSCustomObject]@{
-                Categoria = "SISTEMA OPERACIONAL"
-                Campo = "PRODUCT KEY WINDOWS"
-                Valor = Clean-SpecialCharacters $SystemData.PKEY
+                Categoria = "REDE"
+                Campo = "INTERFACES"
+                Valor = Clean-SpecialCharacters $SystemData.NET
             }
         }
+        if ($SystemData.NETDETAILS -and $SystemData.NETDETAILS.Count -gt 0) {
+            foreach ($nic in $SystemData.NETDETAILS) {
+                $csvData += [PSCustomObject]@{ Categoria = "REDE"; Campo = "INTERFACE $($nic.Nome) - TIPO"; Valor = Clean-SpecialCharacters $nic.Tipo }
+                $csvData += [PSCustomObject]@{ Categoria = "REDE"; Campo = "INTERFACE $($nic.Nome) - MAC"; Valor = Clean-SpecialCharacters $nic.MAC }
+                $csvData += [PSCustomObject]@{ Categoria = "REDE"; Campo = "INTERFACE $($nic.Nome) - IPV4"; Valor = Clean-SpecialCharacters $nic.IPv4 }
+                $csvData += [PSCustomObject]@{ Categoria = "REDE"; Campo = "INTERFACE $($nic.Nome) - IPV6"; Valor = Clean-SpecialCharacters $nic.IPv6 }
+                $csvData += [PSCustomObject]@{ Categoria = "REDE"; Campo = "INTERFACE $($nic.Nome) - MASCARA"; Valor = Clean-SpecialCharacters $nic.Mascara }
+                $csvData += [PSCustomObject]@{ Categoria = "REDE"; Campo = "INTERFACE $($nic.Nome) - GATEWAY"; Valor = Clean-SpecialCharacters $nic.Gateway }
+                $csvData += [PSCustomObject]@{ Categoria = "REDE"; Campo = "INTERFACE $($nic.Nome) - DNS"; Valor = Clean-SpecialCharacters $nic.DNS }
+                $csvData += [PSCustomObject]@{ Categoria = "REDE"; Campo = "INTERFACE $($nic.Nome) - STATUS"; Valor = Clean-SpecialCharacters $nic.Status }
+            }
+        }
+        # ARMAZENAMENTO
+        for ($i = 0; $i -lt $SystemData.DISKS.Count; $i++) {
+            $csvData += [PSCustomObject]@{
+                Categoria = "ARMAZENAMENTO"
+                Campo = "DISCO $($i + 1)"
+                Valor = Clean-SpecialCharacters $SystemData.DISKS[$i]
+            }
+        }
+        # Informações adicionais
+        $csvData += [PSCustomObject]@{ Categoria = "INFORMACOES ADICIONAIS"; Campo = "DATA DE COLETA"; Valor = (Get-Date -Format "dd/MM/yyyy HH:mm:ss").ToUpper() }
+        $csvData += [PSCustomObject]@{ Categoria = "INFORMACOES ADICIONAIS"; Campo = "USUARIO"; Valor = Clean-SpecialCharacters $env:USERNAME }
+        $csvData += [PSCustomObject]@{ Categoria = "INFORMACOES ADICIONAIS"; Campo = "COMPUTADOR"; Valor = Clean-SpecialCharacters $env:COMPUTERNAME }
         # Gera CSV manualmente para melhor controle de codificacao
         $csvContent = "CATEGORIA,CAMPO,VALOR`n"
         foreach ($row in $csvData) {
@@ -101,7 +146,6 @@ function Export-SystemInfoToCSV {
             $valor = $row.Valor -replace '"', '""'
             $csvContent += "`"$categoria`"`,`"$campo`"`,`"$valor`"`n"
         }
-        # Permite exportação UTF-8 se desejado
         if ($Utf8) {
             [System.IO.File]::WriteAllText($csvPath, $csvContent, [System.Text.Encoding]::UTF8)
         } else {
@@ -332,10 +376,12 @@ $DISKS = Get-DisksInfo
 # EXIBICAO ESTILIZADA DOS RESULTADOS
 # =============================================================================
 
+# Exibe todas as informações coletadas na tela
 Write-Header "Resumo do Sistema"
 Write-Field "Sistema Operacional" $SO
 Write-Field "Versao"             $VERS
 Write-Field "Arquitetura"        $ARCH
+Write-Field "Product Key Windows" (Get-WindowsProductKey)
 
 Write-Header "Hardware"
 Write-Field "Processador"        $CPU
