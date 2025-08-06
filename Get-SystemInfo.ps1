@@ -304,6 +304,66 @@ function Get-WindowsProductKey {
     }
 }
 
+# Função para obter informações de segurança de rede
+function Get-SecurityInfo {
+    $info = @{}
+    # Grupo de trabalho ou domínio
+    try {
+        $comp = Get-WmiObject Win32_ComputerSystem
+        $info.WorkgroupOrDomain = if ($comp.PartOfDomain) { $comp.Domain } else { $comp.Workgroup }
+    } catch { $info.WorkgroupOrDomain = 'N/A' }
+    # Usuários administradores locais
+    try {
+        $admins = Get-LocalGroupMember -Group Administradores -ErrorAction Stop | Select-Object -ExpandProperty Name
+        $info.LocalAdmins = $admins -join ', '
+    } catch { $info.LocalAdmins = 'N/A' }
+    # Firewall do Windows
+    try {
+        $fw = Get-NetFirewallProfile -ErrorAction Stop | Where-Object { $_.Enabled -eq $true } | Select-Object -ExpandProperty Name
+        $info.FirewallStatus = if ($fw) { $fw -join ', ' } else { 'Desativado' }
+    } catch { $info.FirewallStatus = 'N/A' }
+    # Antivírus instalado
+    try {
+        $av = Get-CimInstance -Namespace root/SecurityCenter2 -ClassName AntivirusProduct -ErrorAction Stop | Select-Object -ExpandProperty displayName
+        $info.Antivirus = if ($av) { $av -join ', ' } else { 'Nenhum' }
+    } catch { $info.Antivirus = 'N/A' }
+    # Atualizações recentes
+    try {
+        $updates = (Get-HotFix | Sort-Object -Property InstalledOn -Descending | Select-Object -First 3 | ForEach-Object { $_.Description + ' ' + $_.HotFixID + ' (' + $_.InstalledOn + ')' })
+        $info.RecentUpdates = $updates -join '; '
+    } catch { $info.RecentUpdates = 'N/A' }
+    # Políticas de senha
+    try {
+        $pol = net accounts | Out-String
+        $info.PasswordPolicy = $pol -replace '\r|\n', ' | '
+    } catch { $info.PasswordPolicy = 'N/A' }
+    # Compartilhamentos de rede
+    try {
+        $shares = Get-SmbShare -ErrorAction Stop | Where-Object { $_.Name -notin @('ADMIN$', 'C$', 'IPC$') } | Select-Object -ExpandProperty Name
+        $info.NetworkShares = if ($shares) { $shares -join ', ' } else { 'Nenhum' }
+    } catch { $info.NetworkShares = 'N/A' }
+    # Serviços de rede críticos
+    try {
+        $services = @('TermService','LanmanServer','LanmanWorkstation','WinRM')
+        $svcStatus = foreach ($svc in $services) {
+            $s = Get-Service -Name $svc -ErrorAction SilentlyContinue
+            if ($s) { "$($s.Name): $($s.Status)" } else { "$svc: N/A" }
+        }
+        $info.CriticalServices = $svcStatus -join ', '
+    } catch { $info.CriticalServices = 'N/A' }
+    # IP público
+    try {
+        $publicIP = (Invoke-RestMethod -Uri 'https://api.ipify.org?format=text' -TimeoutSec 5)
+        $info.PublicIP = $publicIP
+    } catch { $info.PublicIP = 'N/A' }
+    # BitLocker
+    try {
+        $bitlocker = Get-BitLockerVolume -ErrorAction Stop | Where-Object { $_.VolumeStatus -eq 'FullyEncrypted' } | Select-Object -ExpandProperty MountPoint
+        $info.BitLocker = if ($bitlocker) { $bitlocker -join ', ' } else { 'Desativado' }
+    } catch { $info.BitLocker = 'N/A' }
+    return $info
+}
+
 # =============================================================================
 # SEQUENCIA DE LOADING VISUAL (opcional)
 # =============================================================================
@@ -521,6 +581,18 @@ $officeKey = Get-OfficeProductKey
 Write-Field "Product Key Windows" $winKey
 Write-Field "Product Key Office" $officeKey
 
+Write-Header "Segurança de Rede"
+Write-Field "Grupo/Domain" $securityInfo.WorkgroupOrDomain
+Write-Field "Admins Locais" $securityInfo.LocalAdmins
+Write-Field "Firewall" $securityInfo.FirewallStatus
+Write-Field "Antivírus" $securityInfo.Antivirus
+Write-Field "Atualizações Recentes" $securityInfo.RecentUpdates
+Write-Field "Política de Senha" $securityInfo.PasswordPolicy
+Write-Field "Compartilhamentos" $securityInfo.NetworkShares
+Write-Field "Serviços Críticos" $securityInfo.CriticalServices
+Write-Field "IP Público" $securityInfo.PublicIP
+Write-Field "BitLocker" $securityInfo.BitLocker
+
 Write-Header "Hardware"
 Write-Field "Processador"        $CPU
 Write-Field "Memoria"            "$RAM - $Channel - $Speeds"
@@ -593,6 +665,17 @@ if ($choice -eq "1") {
         DISKS = $DISKS
         PKEY = Get-WindowsProductKey
         OFFICEKEY = Get-OfficeProductKey
+        # Segurança
+        WorkgroupOrDomain = $securityInfo.WorkgroupOrDomain
+        LocalAdmins = $securityInfo.LocalAdmins
+        FirewallStatus = $securityInfo.FirewallStatus
+        Antivirus = $securityInfo.Antivirus
+        RecentUpdates = $securityInfo.RecentUpdates
+        PasswordPolicy = $securityInfo.PasswordPolicy
+        NetworkShares = $securityInfo.NetworkShares
+        CriticalServices = $securityInfo.CriticalServices
+        PublicIP = $securityInfo.PublicIP
+        BitLocker = $securityInfo.BitLocker
     }
     # Gera o arquivo CSV
     $csvResult = Export-SystemInfoToCSV -SystemData $systemData
