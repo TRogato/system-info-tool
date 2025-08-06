@@ -140,13 +140,12 @@ function Export-SystemInfoToCSV {
                 Valor = Clean-SpecialCharacters $SystemData.PKEY
             }
         }
-        # Product Key do Office
-        if ($SystemData.OFFICEKEY) {
-            $csvData += [PSCustomObject]@{
-                Categoria = "SISTEMA OPERACIONAL"
-                Campo = "PRODUCT KEY OFFICE"
-                Valor = Clean-SpecialCharacters $SystemData.OFFICEKEY
-            }
+        # Product Key do Office (sempre inclui o campo, mesmo se for N/A)
+        $officeKeyValue = if ($SystemData.ContainsKey('OFFICEKEY')) { $SystemData.OFFICEKEY } else { 'N/A' }
+        $csvData += [PSCustomObject]@{
+            Categoria = "SISTEMA OPERACIONAL"
+            Campo = "PRODUCT KEY OFFICE"
+            Valor = Clean-SpecialCharacters $officeKeyValue
         }
         # Informações do Hardware
         $csvData += [PSCustomObject]@{
@@ -588,6 +587,7 @@ if ($choice -eq "1") {
         NETDETAILS = $NETDETAILS
         DISKS = $DISKS
         PKEY = Get-WindowsProductKey
+        OFFICEKEY = Get-OfficeProductKey
     }
     # Gera o arquivo CSV
     $csvResult = Export-SystemInfoToCSV -SystemData $systemData
