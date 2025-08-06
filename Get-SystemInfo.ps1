@@ -104,21 +104,6 @@ function Write-Field($k, $v) {
     Write-Host " $v"
 }
 
-# --- Função para limpar caracteres especiais e normalizar acentos ---
-function Clean-SpecialCharacters {
-    param([string]$Text)
-    if ([string]::IsNullOrEmpty($Text)) { return $Text }
-    $cleaned = $Text -replace "[\x00-\x1F\x7F-\x9F]", ""
-    $cleaned = $cleaned -replace "\xA0", " "
-    # Substitui aspas tipográficas e travessão por equivalentes ASCII
-    $cleaned = $cleaned -replace '[“”]', '"'
-    $cleaned = $cleaned -replace "[‘’]", "'"
-    $cleaned = $cleaned -replace "[–—]", "-"
-    $normalized = [Text.NormalizationForm]::FormD
-    $cleaned = [string]::Join('', ($cleaned.Normalize($normalized).ToCharArray() | Where-Object { [Globalization.CharUnicodeInfo]::GetUnicodeCategory($_) -ne 'NonSpacingMark' }))
-    $cleaned = $cleaned -replace '[^\x00-\x7F]', ''
-    return $cleaned.Trim()
-}
 
 # --- Função para mascarar chaves de produto ---
 function Mask-ProductKey($key) {
@@ -372,104 +357,6 @@ function Get-WindowsProductKey {
     }
 }
 
-# Função para obter informações de segurança de rede
-function Get-SecurityInfo {
-    $info = @{}
-    # Cache de chamadas WMI/CIM
-    $comp = Get-CimInstance Win32_ComputerSystem -ErrorAction SilentlyContinue
-    # Grupo de trabalho ou domínio
-    try {
-        if ($comp.PartOfDomain) {
-            $info.WorkgroupOrDomain = $comp.Domain
-        } else {
-            $info.WorkgroupOrDomain = $comp.Workgroup
-        }
-    } catch {
-        $info.WorkgroupOrDomain = 'N/A'
-    }
-    # Usuários administradores locais (usando SID para suporte multilíngue)
-    try {
-        $admins = Get-LocalGroupMember -SID S-1-5-32-544 -ErrorAction Stop | Select-Object -ExpandProperty Name
-        if ($admins) {
-            $info.LocalAdmins = $admins -join ', '
-        } else {
-            $info.LocalAdmins = 'Nenhum'
-        }
-    } catch {
-        $info.LocalAdmins = 'N/A'
-    }
-    # Firewall do Windows
-    try {
-        $fw = Get-NetFirewallProfile -ErrorAction Stop | Where-Object { $_.Enabled -eq $true } | Select-Object -ExpandProperty Name
-        if ($fw) {
-            $info.FirewallStatus = $fw -join ', '
-        } else {
-            $info.FirewallStatus = 'Desativado'
-        }
-    } catch {
-        $info.FirewallStatus = 'N/A'
-    }
-    # Antivírus instalado
-    try {
-        $av = Get-CimInstance -Namespace root/SecurityCenter2 -ClassName AntivirusProduct -ErrorAction Stop | Select-Object -ExpandProperty displayName
-        if ($av) {
-            $info.Antivirus = $av -join ', '
-        } else {
-            $info.Antivirus = 'Nenhum'
-        }
-    } catch {
-        $info.Antivirus = 'N/A'
-    }
-    # Atualizações recentes
-    try {
-        $updates = Get-HotFix | Sort-Object -Property InstalledOn -Descending | Select-Object -First 3 | ForEach-Object { "$($_.Description) $($_.HotFixID) ($($_.InstalledOn))" }
-        if ($updates) {
-            $info.RecentUpdates = $updates -join '; '
-        } else {
-            $info.RecentUpdates = 'Nenhuma'
-        }
-    } catch {
-        $info.RecentUpdates = 'N/A'
-    }
-    # Políticas de senha
-    try {
-        $pol = net accounts | Out-String
-        $info.PasswordPolicy = ($pol -replace "[\r\n]+", " | ")
-    } catch {
-        $info.PasswordPolicy = 'N/A'
-    }
-    # Compartilhamentos de rede
-    try {
-        $shares = Get-SmbShare -ErrorAction Stop | Where-Object { $_.Name -notin @('ADMIN$', 'C$', 'IPC$') } | Select-Object -ExpandProperty Name
-        if ($shares) {
-            $info.NetworkShares = $shares -join ', '
-        } else {
-            $info.NetworkShares = 'Nenhum'
-        }
-    } catch {
-        $info.NetworkShares = 'N/A'
-    }
-    # Serviços de rede críticos
-    try {
-        $services = @('TermService','LanmanServer','LanmanWorkstation','WinRM')
-        $svcStatus = foreach ($svc in $services) {
-            $s = Get-Service -Name $svc -ErrorAction SilentlyContinue
-            if ($s) { "$($s.Name): $($s.Status)" } else { "$svc: N/A" }
-        }
-        $info.CriticalServices = $svcStatus -join ', '
-    } catch { $info.CriticalServices = 'N/A' }
-    # IP público
-    try {
-        $publicIP = Invoke-RestMethod -Uri 'https://api.ipify.org?format=text' -TimeoutSec 5 -ErrorAction Stop
-        $info.PublicIP = $publicIP
-    } catch { $info.PublicIP = 'N/A' }
-    # BitLocker
-    try {
-        $bitlocker = Get-BitLockerVolume -ErrorAction Stop | Where-Object { $_.VolumeStatus -eq 'FullyEncrypted' } | Select-Object -ExpandProperty MountPoint
-        $info.BitLocker = if ($bitlocker) { $bitlocker -join ', ' } else { 'Desativado' }
-    } catch { $info.BitLocker = 'N/A' }
-    return $info
-}
 
 # =============================================================================
 # SEQUÊNCIA DE LOADING VISUAL
@@ -676,11 +563,7 @@ function Get-DisksInfo {
 }
 $DISKS = Get-DisksInfo
 
-# =============================================================================
-# COLETA DE INFORMAÇÕES DE SEGURANÇA
-# =============================================================================
-
-$securityInfo = Get-SecurityInfo
+## Removido bloco de segurança para voltar ao básico
 $winKey = Get-WindowsProductKey
 $officeKey = Get-OfficeProductKey
 
@@ -696,18 +579,7 @@ Write-Field "Product Key Windows" (Mask-ProductKey $winKey)
 Write-Field "Product Key Office" (Mask-ProductKey $officeKey)
 Write-Footer
 
-Write-Header "Segurança de Rede"
-Write-Field "Grupo/Domínio" $securityInfo.WorkgroupOrDomain
-Write-Field "Admins Locais" $securityInfo.LocalAdmins
-Write-Field "Firewall" $securityInfo.FirewallStatus
-Write-Field "Antivírus" $securityInfo.Antivirus
-Write-Field "Atualizações Recentes" $securityInfo.RecentUpdates
-Write-Field "Política de Senha" $securityInfo.PasswordPolicy
-Write-Field "Compartilhamentos" $securityInfo.NetworkShares
-Write-Field "Serviços Críticos" $securityInfo.CriticalServices
-Write-Field "IP Público" $securityInfo.PublicIP
-Write-Field "BitLocker" $securityInfo.BitLocker
-Write-Footer
+## Removido bloco de exibição de segurança
 
 Write-Header "Hardware"
 Write-Field "Processador" $CPU
@@ -775,16 +647,7 @@ if ($choice -eq "1") {
         DISKS = $DISKS
         PKEY = $winKey
         OFFICEKEY = $officeKey
-        WorkgroupOrDomain = $securityInfo.WorkgroupOrDomain
-        LocalAdmins = $securityInfo.LocalAdmins
-        FirewallStatus = $securityInfo.FirewallStatus
-        Antivirus = $securityInfo.Antivirus
-        RecentUpdates = $securityInfo.RecentUpdates
-        PasswordPolicy = $securityInfo.PasswordPolicy
-        NetworkShares = $securityInfo.NetworkShares
-        CriticalServices = $securityInfo.CriticalServices
-        PublicIP = $securityInfo.PublicIP
-        BitLocker = $securityInfo.BitLocker
+        # Campos de segurança removidos
     }
     # Gera o arquivo CSV
     $csvResult = Export-SystemInfoToCSV -SystemData $systemData -OutputPath $OutputPath -Utf8
