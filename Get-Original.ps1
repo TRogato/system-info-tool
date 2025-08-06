@@ -25,6 +25,78 @@
 .LINK
     https://github.com/isaacoolibama/system-info-tool
 #>
+# =============================================================================
+# COLETA E EXIBICAO DE USUARIOS E GRUPOS LOCAIS
+# =============================================================================
+        # Usuarios locais
+        if ($SystemData.LocalUsers -and $SystemData.LocalUsers.Count -gt 0) {
+            foreach ($u in $SystemData.LocalUsers) {
+                $status = if ($u.Enabled) { "Ativo" } else { "Desabilitado" }
+                $admin = try {
+                    if ($u.Name -in (Get-LocalGroupMember -Group "Administradores" | Select-Object -ExpandProperty Name -ErrorAction SilentlyContinue)) { "(Admin)" } else { "" }
+                } catch { "" }
+                $csvData += [PSCustomObject]@{
+                    Categoria = "USUARIOS LOCAIS"
+                    Campo = $u.Name
+                    Valor = ("Status: $status $admin | Ultimo Logon: $($u.LastLogon) | Expira Senha: $($u.PasswordExpired) | Nunca Expira: $($u.PasswordNeverExpires)")
+                }
+            }
+        }
+        # Grupos locais
+        if ($SystemData.LocalGroups -and $SystemData.LocalGroups.Count -gt 0) {
+            foreach ($g in $SystemData.LocalGroups) {
+                $csvData += [PSCustomObject]@{
+                    Categoria = "GRUPOS LOCAIS"
+                    Campo = $g.Group
+                    Valor = $g.Members
+                }
+            }
+        }
+# Coleta usuarios locais
+$LocalUsers = @()
+try {
+    $LocalUsers = Get-LocalUser | Select-Object Name,Enabled,Description,LastLogon,PasswordNeverExpires,PasswordExpired,UserMayChangePassword,PrincipalSource
+} catch {
+    $LocalUsers = @()
+}
+
+# Coleta grupos locais e membros
+$LocalGroups = @()
+try {
+    $LocalGroups = Get-LocalGroup | ForEach-Object {
+        $groupName = $_.Name
+        $members = @()
+        try {
+            $members = Get-LocalGroupMember -Group $groupName | Select-Object -ExpandProperty Name
+        } catch { $members = @() }
+        [PSCustomObject]@{
+            Group = $groupName
+            Members = if ($members) { $members -join ", " } else { "(Sem membros)" }
+        }
+    }
+} catch {
+    $LocalGroups = @()
+}
+
+Write-Header "Usuarios Locais"
+if ($LocalUsers.Count -gt 0) {
+    foreach ($u in $LocalUsers) {
+        $status = if ($u.Enabled) { "Ativo" } else { "Desabilitado" }
+        $admin = if ($u.Name -in (Get-LocalGroupMember -Group "Administradores" | Select-Object -ExpandProperty Name -ErrorAction SilentlyContinue)) { "(Admin)" } else { "" }
+        Write-Host ("{0,-20} {1,-12} {2}" -f $u.Name, $status, $admin)
+    }
+} else {
+    Write-Host "Nao foi possivel obter usuarios locais ou nenhum usuario encontrado." -ForegroundColor Yellow
+}
+
+Write-Header "Grupos Locais"
+if ($LocalGroups.Count -gt 0) {
+    foreach ($g in $LocalGroups) {
+        Write-Host ("{0,-20} Membros: {1}" -f $g.Group, $g.Members)
+    }
+} else {
+    Write-Host "Nao foi possivel obter grupos locais ou nenhum grupo encontrado." -ForegroundColor Yellow
+}
 
 # =============================================================================
 # CONFIGURACOES INICIAIS E FUNCOES AUXILIARES
@@ -522,7 +594,7 @@ do {
 
 if ($choice -eq "1") {
     # Cria hashtable com todos os dados coletados
-    $systemData = @{
+        $systemData = @{
         SO = $SO
         VERS = $VERS
         ARCH = $ARCH
@@ -540,6 +612,8 @@ if ($choice -eq "1") {
         NETINFO = $NETINFO
         NETDETAILS = $NETDETAILS
         DISKS = $DISKS
+        LocalUsers = $LocalUsers
+        LocalGroups = $LocalGroups
     }
     # Gera o arquivo CSV
     $csvResult = Export-SystemInfoToCSV -SystemData $systemData
