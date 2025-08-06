@@ -1,3 +1,35 @@
+# Função para tentar obter o serial do Office (última chave instalada)
+function Get-OfficeProductKey {
+    try {
+        $officePaths = @(
+            'HKLM:\SOFTWARE\Microsoft\Office\ClickToRun\Configuration',
+            'HKLM:\SOFTWARE\Microsoft\Office\16.0\Registration',
+            'HKLM:\SOFTWARE\Microsoft\Office\15.0\Registration',
+            'HKLM:\SOFTWARE\Microsoft\Office\14.0\Registration',
+            'HKLM:\SOFTWARE\Wow6432Node\Microsoft\Office\16.0\Registration',
+            'HKLM:\SOFTWARE\Wow6432Node\Microsoft\Office\15.0\Registration',
+            'HKLM:\SOFTWARE\Wow6432Node\Microsoft\Office\14.0\Registration'
+        )
+        foreach ($path in $officePaths) {
+            if (Test-Path $path) {
+                $keys = Get-ChildItem $path -ErrorAction SilentlyContinue
+                foreach ($key in $keys) {
+                    $prod = Get-ItemProperty $key.PSPath -ErrorAction SilentlyContinue
+                    if ($prod.ProductID) {
+                        return $prod.ProductID
+                    }
+                }
+            }
+        }
+        $wmi = Get-WmiObject -Query "Select * from SoftwareLicensingService" -ErrorAction SilentlyContinue | Where-Object { $_.ApplicationID -ne $null -and $_.Name -like '*Office*' }
+        if ($wmi -and $wmi.Count -gt 0) {
+            return $wmi[0].PartialProductKey
+        }
+        return "N/A"
+    } catch {
+        return "N/A"
+    }
+}
 <#
 .SYNOPSIS
     System Information Tool - Ferramenta para coleta de informacoes do sistema Windows
@@ -40,7 +72,7 @@ function Show-Loading {
     foreach ($step in $Steps) {
         Write-Host $step -ForegroundColor Yellow
         Start-Sleep -Milliseconds 600
-    }
+        OFFICEKEY = Get-OfficeProductKey
 }
 
 # --- Funcoes de formatacao e exibicao ---
@@ -106,6 +138,14 @@ function Export-SystemInfoToCSV {
                 Categoria = "SISTEMA OPERACIONAL"
                 Campo = "PRODUCT KEY WINDOWS"
                 Valor = Clean-SpecialCharacters $SystemData.PKEY
+            }
+        }
+        # Product Key do Office
+        if ($SystemData.OFFICEKEY) {
+            $csvData += [PSCustomObject]@{
+                Categoria = "SISTEMA OPERACIONAL"
+                Campo = "PRODUCT KEY OFFICE"
+                Valor = Clean-SpecialCharacters $SystemData.OFFICEKEY
             }
         }
         # Informações do Hardware
@@ -562,7 +602,7 @@ if ($choice -eq "1") {
         Write-Host "`n" -NoNewline
         Write-Host "==================================================" -ForegroundColor Gray
         Write-Host "`nObrigado por usar o System Information Tool!" -ForegroundColor Cyan
-        Write-Host "GitHub: https://github.com/isaacoolibama/system-info-tool" -ForegroundColor Yellow
+        Write-Host "GitHub: https://github.com/TRogato/system-info-tool" -ForegroundColor Yellow
         Write-Host "`nPressione qualquer tecla para sair..." -ForegroundColor Gray
         $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
         [Environment]::Exit(0)
