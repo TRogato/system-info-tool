@@ -515,6 +515,12 @@ Write-Field "Sistema Operacional" $SO
 Write-Field "Versao"             $VERS
 Write-Field "Arquitetura"        $ARCH
 
+# Exibe Product Key do Windows e Office
+$winKey = Get-WindowsProductKey
+$officeKey = Get-OfficeProductKey
+Write-Field "Product Key Windows" $winKey
+Write-Field "Product Key Office" $officeKey
+
 Write-Header "Hardware"
 Write-Field "Processador"        $CPU
 Write-Field "Memoria"            "$RAM - $Channel - $Speeds"
