@@ -347,7 +347,7 @@ function Get-SecurityInfo {
         $services = @('TermService','LanmanServer','LanmanWorkstation','WinRM')
         $svcStatus = foreach ($svc in $services) {
             $s = Get-Service -Name $svc -ErrorAction SilentlyContinue
-            if ($s) { "$($s.Name): $($s.Status)" } else { "$svc: N/A" }
+            if ($s) { "$($s.Name): $($s.Status)" } else { "${svc}: N/A" }
         }
         $info.CriticalServices = $svcStatus -join ', '
     } catch { $info.CriticalServices = 'N/A' }
