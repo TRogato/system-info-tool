@@ -90,36 +90,19 @@ function Clean-SpecialCharacters {
     return $cleaned.Trim()
 }
 
-# --- Funcao para gerar arquivo CSV ---
 function Export-SystemInfoToCSV {
     param([hashtable]$SystemData)
-    
     try {
-        # Define o caminho do arquivo CSV na area de trabalho
         $desktopPath = [Environment]::GetFolderPath("Desktop")
         $timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
         $csvPath = Join-Path $desktopPath "SystemInfo_$timestamp.csv"
-        
-        # Cria array de objetos para exportar
         $csvData = @()
-        
         # Informacoes do Sistema Operacional
-        $csvData += [PSCustomObject]@{
-            Categoria = "SISTEMA OPERACIONAL"
-            Campo = "NOME"
-            Valor = Clean-SpecialCharacters $SystemData.SO
-        }
-        $csvData += [PSCustomObject]@{
-            Categoria = "SISTEMA OPERACIONAL"
-            Campo = "VERSAO"
-            Valor = Clean-SpecialCharacters $SystemData.VERS
-        }
-        $csvData += [PSCustomObject]@{
-            Categoria = "SISTEMA OPERACIONAL"
-            Campo = "ARQUITETURA"
-            Valor = Clean-SpecialCharacters $SystemData.ARCH
-        }
-        
+        $csvData += [PSCustomObject]@{ Categoria = "SISTEMA OPERACIONAL"; Campo = "NOME"; Valor = Clean-SpecialCharacters $SystemData.SO }
+        $csvData += [PSCustomObject]@{ Categoria = "SISTEMA OPERACIONAL"; Campo = "VERSAO"; Valor = Clean-SpecialCharacters $SystemData.VERS }
+        $csvData += [PSCustomObject]@{ Categoria = "SISTEMA OPERACIONAL"; Campo = "ARQUITETURA"; Valor = Clean-SpecialCharacters $SystemData.ARCH }
+        $csvData += [PSCustomObject]@{ Categoria = "SISTEMA OPERACIONAL"; Campo = "STATUS DE ATIVACAO"; Valor = Clean-SpecialCharacters $SystemData.ActivationStatus }
+        $csvData += [PSCustomObject]@{ Categoria = "SISTEMA OPERACIONAL"; Campo = "TIPO DE LICENCA"; Valor = Clean-SpecialCharacters $SystemData.LicenseType }
         # Informacoes do Hardware
         $csvData += [PSCustomObject]@{
             Categoria = "HARDWARE"
@@ -302,6 +285,33 @@ $o          = Get-CimInstance Win32_OperatingSystem -ErrorAction SilentlyContinu
 $SO         = $o.Caption
 $VERS       = "v$($o.Version) Build $($o.BuildNumber)"
 $ARCH       = $o.OSArchitecture
+
+# Obtem status de ativação e tipo de licença
+try {
+    $lic = Get-CimInstance SoftwareLicensingProduct -ErrorAction Stop | Where-Object { $_.PartialProductKey -and $_.LicenseStatus -ne $null }
+    $activationStatus = switch ($lic.LicenseStatus) {
+        0 { 'Desconhecido' }
+        1 { 'Licenciado' }
+        2 { 'Inicializado' }
+        3 { 'Notificado' }
+        4 { 'Não Licenciado' }
+        5 { 'Necessita Reinstalação' }
+        default { 'Desconhecido' }
+    }
+    $licenseType = if ($lic.ProductKeyChannel) {
+        switch -Wildcard ($lic.ProductKeyChannel) {
+            '*OEM*' { 'OEM' }
+            '*Retail*' { 'Retail' }
+            '*Volume*' { 'Volume' }
+            default { $lic.ProductKeyChannel }
+        }
+    } else {
+        'Desconhecido'
+    }
+} catch {
+    $activationStatus = 'Desconhecido'
+    $licenseType = 'Desconhecido'
+}
 
 # =============================================================================
 # COLETA DE DADOS DO PROCESSADOR
@@ -516,6 +526,8 @@ if ($choice -eq "1") {
         SO = $SO
         VERS = $VERS
         ARCH = $ARCH
+        ActivationStatus = $activationStatus
+        LicenseType = $licenseType
         CPU = $CPU
         RAM = $RAM
         Channel = $Channel
@@ -529,20 +541,16 @@ if ($choice -eq "1") {
         NETDETAILS = $NETDETAILS
         DISKS = $DISKS
     }
-    
     # Gera o arquivo CSV
     $csvResult = Export-SystemInfoToCSV -SystemData $systemData
-    
     if ($csvResult) {
         Write-Host "`n" -NoNewline
         Write-Host "===============================================" -ForegroundColor Green
         Write-Host "        ARQUIVO GERADO COM SUCESSO!        " -ForegroundColor Green
         Write-Host "===============================================" -ForegroundColor Green
-        
         Write-Host "`nLocalizacao: $($csvResult.Path)" -ForegroundColor Cyan
         Write-Host "Voce pode abrir o arquivo no Excel ou em qualquer editor de planilhas." -ForegroundColor Yellow
         Write-Host "Total de informacoes coletadas: $($csvResult.RecordCount) registros" -ForegroundColor Magenta
-        
         Write-Host "`n" -NoNewline
         Write-Host "==================================================" -ForegroundColor Gray
         Write-Host "`nObrigado por usar o System Information Tool!" -ForegroundColor Cyan
@@ -554,4 +562,4 @@ if ($choice -eq "1") {
 } elseif ($choice -eq "2") {
     # Fecha o terminal completamente
     [Environment]::Exit(0)
-} 
+}
