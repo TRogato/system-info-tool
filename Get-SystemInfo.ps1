@@ -21,7 +21,7 @@ function Get-OfficeProductKey {
                 }
             }
         }
-        $wmi = Get-WmiObject -Query "Select * from SoftwareLicensingService" -ErrorAction SilentlyContinue | Where-Object { $_.ApplicationID -ne $null -and $_.Name -like '*Office*' }
+        $wmi = Get-WmiObject -Query "SELECT * FROM SoftwareLicensingService WHERE ApplicationID IS NOT NULL AND Name LIKE '%Office%'" -ErrorAction SilentlyContinue
         if ($wmi -and $wmi.Count -gt 0) {
             return $wmi[0].PartialProductKey
         }
@@ -56,7 +56,7 @@ function Get-OfficeProductKey {
 
 .NOTES
     Autor: Isaac Oolibama R. Lacerda
-    Versão: 1.1
+    Versão: 1.2
     Data: 06/08/2025
     Requer: Windows 10/11, PowerShell 5.1+
     Permissões: Administrador (obrigatório)
@@ -94,7 +94,7 @@ function Write-Header($t) {
     Write-Host "`n┌────────────────────── $t ──────────────────────┐" -ForegroundColor Magenta
 }
 
-function Write-Footer($t) {
+function Write-Footer {
     Write-Host "└────────────────────────────────────────────────┘" -ForegroundColor Magenta
 }
 
@@ -108,9 +108,8 @@ function Write-Field($k, $v) {
 function Clean-SpecialCharacters {
     param([string]$Text)
     if ([string]::IsNullOrEmpty($Text)) { return $Text }
-    $cleaned = $Text -replace "[\u0000-\u001F\u007F-\u009F]", ""
-    $cleaned = $cleaned -replace "[\u2028\u2029]", " "
-    $cleaned = $cleaned -replace "[\u00A0]", " "
+    $cleaned = $Text -replace "[\x00-\x1F\x7F-\x9F]", ""
+    $cleaned = $cleaned -replace "\xA0", " "
     $cleaned = $cleaned -replace "[\u201C\u201D]", '"'
     $cleaned = $cleaned -replace "[\u2018\u2019]", "'"
     $cleaned = $cleaned -replace "[\u2013\u2014]", "-"
@@ -362,7 +361,7 @@ function Export-SystemInfoToCSV {
 # Função para obter o serial (Product Key) do Windows
 function Get-WindowsProductKey {
     try {
-        $key = (Get-WmiObject -query 'select * from SoftwareLicensingService').OA3xOriginalProductKey
+        $key = (Get-WmiObject -Query 'SELECT * FROM SoftwareLicensingService').OA3xOriginalProductKey
         if ([string]::IsNullOrWhiteSpace($key)) {
             return "N/A"
         }
@@ -384,7 +383,7 @@ function Get-SecurityInfo {
     # Usuários administradores locais (usando SID para suporte multilíngue)
     try {
         $admins = Get-LocalGroupMember -SID S-1-5-32-544 -ErrorAction Stop | Select-Object -ExpandProperty Name
-        $info.LocalAdmins = $admins -join ', '
+        $info.LocalAdmins = if ($admins) { $admins -join ', ' } else { 'Nenhum' }
     } catch { $info.LocalAdmins = 'N/A' }
     # Firewall do Windows
     try {
@@ -398,13 +397,13 @@ function Get-SecurityInfo {
     } catch { $info.Antivirus = 'N/A' }
     # Atualizações recentes
     try {
-        $updates = (Get-HotFix | Sort-Object -Property InstalledOn -Descending | Select-Object -First 3 | ForEach-Object { $_.Description + ' ' + $_.HotFixID + ' (' + $_.InstalledOn + ')' })
+        $updates = Get-HotFix | Sort-Object -Property InstalledOn -Descending | Select-Object -First 3 | ForEach-Object { "$($_.Description) $($_.HotFixID) ($($_.InstalledOn))" }
         $info.RecentUpdates = if ($updates) { $updates -join '; ' } else { 'Nenhuma' }
     } catch { $info.RecentUpdates = 'N/A' }
     # Políticas de senha
     try {
         $pol = net accounts | Out-String
-        $info.PasswordPolicy = $pol -replace '\r|\n', ' | '
+        $info.PasswordPolicy = $pol -replace '[\r\n]+', ' | '
     } catch { $info.PasswordPolicy = 'N/A' }
     # Compartilhamentos de rede
     try {
@@ -416,13 +415,13 @@ function Get-SecurityInfo {
         $services = @('TermService','LanmanServer','LanmanWorkstation','WinRM')
         $svcStatus = foreach ($svc in $services) {
             $s = Get-Service -Name $svc -ErrorAction SilentlyContinue
-            if ($s) { "$($s.Name): $($s.Status)" } else { "${svc}: N/A" }
+            if ($s) { "$($s.Name): $($s.Status)" } else { "$svc: N/A" }
         }
         $info.CriticalServices = $svcStatus -join ', '
     } catch { $info.CriticalServices = 'N/A' }
     # IP público
     try {
-        $publicIP = (Invoke-RestMethod -Uri 'https://api.ipify.org?format=text' -TimeoutSec 5 -ErrorAction Stop)
+        $publicIP = Invoke-RestMethod -Uri 'https://api.ipify.org?format=text' -TimeoutSec 5 -ErrorAction Stop
         $info.PublicIP = $publicIP
     } catch { $info.PublicIP = 'N/A' }
     # BitLocker
@@ -570,8 +569,7 @@ function Get-NetworkInfo {
             Sort-Object -Property Name
         foreach ($nic in $allNics) {
             $conf = Get-CimInstance Win32_NetworkAdapterConfiguration -Filter "Index=$($nic.DeviceID)" -ErrorAction SilentlyContinue
-            $mac = $nic.MACAddress
-            if ($mac) { $mac = $mac -replace "(.{2})(?!$)", '${1}:' } else { $mac = 'N/A' }
+            $mac = if ($nic.MACAddress) { $nic.MACAddress -replace "(.{2})(?!$)", '$1:' } else { 'N/A' }
             $isWifi = ($nic.AdapterType -match "Wireless") -or ($nic.Name -match "Wi.?Fi|802\.11|Wireless")
             $isVirtual = ($nic.Name -match "vEthernet|Hyper-V|Virtual|TAP|OpenVPN|Tailscale")
             $isBluetooth = ($nic.Name -match "Bluetooth")
@@ -641,6 +639,8 @@ $DISKS = Get-DisksInfo
 # =============================================================================
 
 $securityInfo = Get-SecurityInfo
+$winKey = Get-WindowsProductKey
+$officeKey = Get-OfficeProductKey
 
 # =============================================================================
 # EXIBIÇÃO ESTILIZADA DOS RESULTADOS
@@ -731,8 +731,8 @@ if ($choice -eq "1") {
         NETINFO = $NETINFO
         NETDETAILS = $NETDETAILS
         DISKS = $DISKS
-        PKEY = Get-WindowsProductKey
-        OFFICEKEY = Get-OfficeProductKey
+        PKEY = $winKey
+        OFFICEKEY = $officeKey
         WorkgroupOrDomain = $securityInfo.WorkgroupOrDomain
         LocalAdmins = $securityInfo.LocalAdmins
         FirewallStatus = $securityInfo.FirewallStatus
