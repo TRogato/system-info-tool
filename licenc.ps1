@@ -671,4 +671,154 @@ Write-Field "Tempo de Atividade" $UPTIME
 Write-Field "Ultimo Boot"        $LASTBOOT
 Write-Field "Product Key"        (Get-WindowsProductKey)
 
-Write-Header "Hard
+Write-Header "Hardware"
+Write-Field "Fabricante"         $MANUFACTURER
+Write-Field "Modelo"             $MODEL
+Write-Field "Tipo de Sistema"    $SYSTEMTYPE
+Write-Field "Processador"        $CPU
+Write-Field "Nucleos Fisicos"    $CORES
+Write-Field "Threads"           $THREADS
+Write-Field "Memoria"            "$RAM - $Channel - $Speeds"
+Write-Field "GPU"                $GPU
+Write-Field "Placa-Mae"          $BOARD
+Write-Field "BIOS"               $BIOS
+Write-Field "Numero de Serie"    $SERIAL
+
+if ($BATTERY) {
+    Write-Header "Bateria"
+    Write-Field "Fabricante"      $BATTERY.Manufacturer
+    Write-Field "Quimica"         $BATTERY.Chemistry
+    Write-Field "Capacidade"      "$($BATTERY.DesignCapacity) mWh"
+    Write-Field "Carga Atual"     "$($BATTERY.EstimatedChargeRemaining)%"
+    Write-Field "Status"          $BATTERY.Status
+}
+
+if ($MONITORS -and $MONITORS.Count -gt 0) {
+    Write-Header "Monitor(es)"
+    foreach ($monitor in $MONITORS) {
+        Write-Field "$($monitor.Name)" "$($monitor.ScreenWidth)x$($monitor.ScreenHeight) @ $($monitor.ScreenRefreshRate)Hz | $($monitor.Manufacturer)"
+    }
+}
+
+Write-Header "Rede"
+Write-Field "Status Firewall"    $FIREWALL
+if ($NET -is [array]) {
+    Write-Host "Interfaces de Rede Ativas:" -ForegroundColor Cyan
+    Write-Host $NETINFO
+} else {
+    Write-Field "Rede" $NET
+    Write-Host $NETINFO
+}
+
+if ($NETCONNECTIONS -ne "N/A") {
+    Write-Header "Conexoes Ativas"
+    Write-Host $NETCONNECTIONS
+}
+
+Write-Header "Discos"
+foreach ($d in $DISKS) {
+    Write-Host "  $d"
+}
+
+if ($PARTITIONS -and $PARTITIONS.Count -gt 0) {
+    Write-Header "Particoes"
+    foreach ($partition in $PARTITIONS) {
+        Write-Host "  $($partition.DeviceID): $([math]::Round($partition.Size/1GB)) GB ($($partition.FileSystem)) - $([math]::Round($partition.FreeSpace/1GB)) GB livre"
+    }
+}
+
+Write-Header "Software"
+Write-Field "Aplicativos Instalados" "$($APPS.Count)"
+Write-Field "Atualizacoes Instaladas" "$($UPDATES.Count)"
+Write-Field "Servicos em Execucao" "$($SERVICES.Count)"
+
+# =============================================================================
+# OPCAO DE EXPORTACAO PARA CSV
+# =============================================================================
+
+Write-Host "`n" -NoNewline
+Write-Host "==============================================" -ForegroundColor Magenta
+Write-Host "              OPCOES ADICIONAIS              " -ForegroundColor Magenta
+Write-Host "==============================================" -ForegroundColor Magenta
+
+do {
+    Write-Host "`n1 - Gerar arquivo CSV com todas as informacoes"
+    Write-Host "2 - Sair"
+    Write-Host "`nEscolha uma opcao (1 ou 2): " -NoNewline -ForegroundColor Yellow
+    
+    $choice = Read-Host
+    
+    if ($choice -eq "1") {
+        break
+    } elseif ($choice -eq "2") {
+        break
+    } else {
+        Write-Host "`nOpcao invalida! Digite 1 ou 2." -ForegroundColor Red
+        Start-Sleep -Seconds 1
+        Clear-Host
+        Write-Host "==============================================" -ForegroundColor Magenta
+        Write-Host "              OPCOES ADICIONAIS              " -ForegroundColor Magenta
+        Write-Host "==============================================" -ForegroundColor Magenta
+    }
+} while ($true)
+
+if ($choice -eq "1") {
+    # Cria hashtable com todos os dados coletados
+    $systemData = @{
+        SO = $SO
+        VERS = $VERS
+        ARCH = $ARCH
+        WINDIR = $WINDIR
+        UPTIME = $UPTIME
+        LASTBOOT = $LASTBOOT
+        MANUFACTURER = $MANUFACTURER
+        MODEL = $MODEL
+        SYSTEMTYPE = $SYSTEMTYPE
+        CPU = $CPU
+        CORES = $CORES
+        THREADS = $THREADS
+        RAM = $RAM
+        Channel = $Channel
+        Speeds = $Speeds
+        RAMMODULES = $RAMMODULES
+        GPU = $GPU
+        BOARD = $BOARD
+        BIOS = $BIOS
+        SERIAL = $SERIAL
+        BATTERY = $BATTERY
+        MONITORS = $MONITORS
+        NET = $NET
+        NETINFO = $NETINFO
+        NETDETAILS = $NETDETAILS
+        NETCONNECTIONS = $NETCONNECTIONS
+        FIREWALL = $FIREWALL
+        DISKS = $DISKS
+        PARTITIONS = $PARTITIONS
+        PKEY = (Get-WindowsProductKey)
+        APPS = $APPS
+        UPDATES = $UPDATES
+        SERVICES = $SERVICES
+    }
+    
+    # Gera o arquivo CSV
+    $csvResult = Export-SystemInfoToCSV -SystemData $systemData
+    if ($csvResult) {
+        Write-Host "`n" -NoNewline
+        Write-Host "===============================================" -ForegroundColor Green
+        Write-Host "        ARQUIVO GERADO COM SUCESSO!        " -ForegroundColor Green
+        Write-Host "===============================================" -ForegroundColor Green
+        Write-Host "`nLocalizacao: $($csvResult.Path)" -ForegroundColor Cyan
+        Write-Host "Voce pode abrir o arquivo no Excel ou em qualquer editor de planilhas." -ForegroundColor Yellow
+        Write-Host "Total de informacoes coletadas: $($csvResult.RecordCount) registros" -ForegroundColor Magenta
+        Write-Host "`n" -NoNewline
+        Write-Host "==================================================" -ForegroundColor Gray
+        Write-Host "`nObrigado por usar o System Information Tool!" -ForegroundColor Cyan
+        Write-Host "GitHub: https://github.com/TRogato/system-info-tool" -ForegroundColor Yellow
+        Write-Host "`nPressione qualquer tecla para sair..." -ForegroundColor Gray
+        $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+        [Environment]::Exit(0)
+    }
+} elseif ($choice -eq "2") {
+    # Fecha o terminal completamente
+    [Environment]::Exit(0)
+}
