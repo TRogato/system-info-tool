@@ -103,15 +103,16 @@ function Export-SystemInfoToCSV {
             for ($i = 0; $i -lt $SystemData.NET.Count; $i++) {
                 $csvData += [PSCustomObject]@{
                     Categoria = "REDE"
-                    Campo = "INTERFACE $($i + 1)"
-                    Valor = Clean-SpecialCharacters $SystemData.NET[$i]
+                    Campo     = "INTERFACE $($i + 1)"
+                    Valor     = Clean-SpecialCharacters $SystemData.NET[$i]
                 }
             }
-        } else {
+        }
+        else {
             $csvData += [PSCustomObject]@{
                 Categoria = "REDE"
-                Campo = "INTERFACES"
-                Valor = Clean-SpecialCharacters $SystemData.NET
+                Campo     = "INTERFACES"
+                Valor     = Clean-SpecialCharacters $SystemData.NET
             }
         }
         if ($SystemData.NETDETAILS -and $SystemData.NETDETAILS.Count -gt 0) {
@@ -130,8 +131,8 @@ function Export-SystemInfoToCSV {
         for ($i = 0; $i -lt $SystemData.DISKS.Count; $i++) {
             $csvData += [PSCustomObject]@{
                 Categoria = "ARMAZENAMENTO"
-                Campo = "DISCO $($i + 1)"
-                Valor = Clean-SpecialCharacters $SystemData.DISKS[$i]
+                Campo     = "DISCO $($i + 1)"
+                Valor     = Clean-SpecialCharacters $SystemData.DISKS[$i]
             }
         }
         # Informações adicionais
@@ -148,11 +149,13 @@ function Export-SystemInfoToCSV {
         }
         if ($Utf8) {
             [System.IO.File]::WriteAllText($csvPath, $csvContent, [System.Text.Encoding]::UTF8)
-        } else {
+        }
+        else {
             [System.IO.File]::WriteAllText($csvPath, $csvContent, [System.Text.Encoding]::Default)
         }
         return @{ Path = $csvPath; RecordCount = $csvData.Count }
-    } catch {
+    }
+    catch {
         Write-Host "`n❌ Erro ao gerar arquivo CSV: $($_.Exception.Message)" -ForegroundColor Red
         return $null
     }
@@ -165,8 +168,88 @@ function Get-WindowsProductKey {
             return "N/A"
         }
         return $key
-    } catch {
+    }
+    catch {
         return "N/A"
+    }
+}
+
+# Função para obter o serial (Product Key) do Microsoft Office
+function Get-OfficeProductKey {
+    try {
+        # Tenta obter a chave do Office 2013/2016/2019/365 (via registro)
+        $officeKeyPath = "HKLM:\SOFTWARE\Microsoft\Office\ClickToRun\Configuration"
+        $officeKey = (Get-ItemProperty -Path $officeKeyPath -Name "ProductReleaseIds" -ErrorAction SilentlyContinue).ProductReleaseIds
+        
+        if ($officeKey) {
+            return $officeKey
+        }
+        
+        # Tenta obter a chave para versões mais antigas do Office (2010 e anteriores)
+        $officeVersions = @(
+            "16.0",  # Office 2016/2019/365
+            "15.0",  # Office 2013
+            "14.0",  # Office 2010
+            "12.0"   # Office 2007
+        )
+        
+        foreach ($version in $officeVersions) {
+            $keyPath = "HKLM:\SOFTWARE\Microsoft\Office\$version\Registration"
+            $productGuid = (Get-ChildItem -Path $keyPath -ErrorAction SilentlyContinue | 
+                Where-Object { $_.PSChildName -match "{.{8}-.{4}-.{4}-.{4}-.{12}}" } | 
+                Select-Object -First 1).PSChildName
+            
+            if ($productGuid) {
+                $digitalProductId = (Get-ItemProperty -Path "$keyPath\$productGuid" -Name "DigitalProductId" -ErrorAction SilentlyContinue).DigitalProductId
+                if ($digitalProductId) {
+                    # Decodifica o DigitalProductId para obter a chave
+                    $officeKey = Convert-OfficeKey -digitalProductId $digitalProductId
+                    return $officeKey
+                }
+            }
+        }
+        
+        return "N/A (Office não encontrado ou versão não suportada)"
+    }
+    catch {
+        return "N/A (Erro ao obter chave)"
+    }
+}
+
+# Função auxiliar para decodificar o DigitalProductId do Office
+function Convert-OfficeKey {
+    param([byte[]]$digitalProductId)
+    
+    try {
+        # Tabela de caracteres para decodificação
+        $chars = "BCDFGHJKMPQRTVWXY2346789"
+        
+        # Extrai a chave do produto dos bytes
+        $key = ""
+        $last = 0
+        
+        for ($i = 24; $i -ge 0; $i--) {
+            $index = 0
+            for ($j = 14; $j -ge 0; $j--) {
+                $index = ($index -shl 8) -bxor $digitalProductId[$j]
+                $digitalProductId[$j] = [math]::Floor($index / 24) -as [byte]
+                $index = $index % 24
+                $last = $index
+            }
+            $key = $chars[$index] + $key
+        }
+        
+        # Formata a chave no padrão XXXXX-XXXXX-XXXXX-XXXXX-XXXXX
+        $formattedKey = $key.Substring(1, 5) + "-" + 
+        $key.Substring(6, 5) + "-" + 
+        $key.Substring(11, 5) + "-" + 
+        $key.Substring(16, 5) + "-" + 
+        $key.Substring(21, 5)
+        
+        return $formattedKey
+    }
+    catch {
+        return "N/A (Erro ao decodificar chave)"
     }
 }
 
@@ -204,7 +287,8 @@ function Get-OSInfo {
             VERS = "v$($o.Version) Build $($o.BuildNumber)"
             ARCH = $o.OSArchitecture
         }
-    } catch {
+    }
+    catch {
         return @{ SO = 'N/A'; VERS = 'N/A'; ARCH = 'N/A' }
     }
 }
@@ -220,10 +304,11 @@ $ARCH = $osInfo.ARCH
 function Get-CPUInfo {
     try {
         $c = Get-CimInstance Win32_Processor -ErrorAction Stop | Select-Object -First 1
-        $baseGHz = [math]::Round($c.CurrentClockSpeed/1000,1)
-        $boostGHz = [math]::Round($c.MaxClockSpeed/1000,1)
+        $baseGHz = [math]::Round($c.CurrentClockSpeed / 1000, 1)
+        $boostGHz = [math]::Round($c.MaxClockSpeed / 1000, 1)
         return "$($c.Name.Trim()) | Cores: $($c.NumberOfCores) | Threads: $($c.NumberOfLogicalProcessors) | Base: ${baseGHz}GHz"
-    } catch {
+    }
+    catch {
         return 'N/A'
     }
 }
@@ -236,7 +321,7 @@ $CPU = Get-CPUInfo
 function Get-RAMInfo {
     try {
         $memModules = Get-CimInstance Win32_PhysicalMemory -ErrorAction Stop
-        $RAMGB = [math]::Round((Get-CimInstance Win32_ComputerSystem -ErrorAction Stop).TotalPhysicalMemory/1GB,0)
+        $RAMGB = [math]::Round((Get-CimInstance Win32_ComputerSystem -ErrorAction Stop).TotalPhysicalMemory / 1GB, 0)
         $RAM = "$RAMGB GB"
         $speedsList = $memModules | Select-Object -ExpandProperty Speed -Unique
         $Speeds = if ($speedsList) { ($speedsList -join ', ') + ' MHz' } else { 'N/A' }
@@ -247,7 +332,8 @@ function Get-RAMInfo {
             Default { "$($memModules.Count)-Channel" }
         }
         return @{ RAM = $RAM; Channel = $Channel; Speeds = $Speeds }
-    } catch {
+    }
+    catch {
         return @{ RAM = 'N/A'; Channel = 'N/A'; Speeds = 'N/A' }
     }
 }
@@ -264,7 +350,8 @@ function Get-GPUInfo {
     try {
         $g = Get-CimInstance Win32_VideoController -ErrorAction Stop | Select-Object -First 1
         return "$($g.Name) | $([math]::Round($g.AdapterRAM/1MB)) MB | Driver: $($g.DriverVersion)"
-    } catch {
+    }
+    catch {
         return 'N/A'
     }
 }
@@ -283,7 +370,8 @@ function Get-BoardBiosInfo {
         $mb = Get-CimInstance Win32_BaseBoard -ErrorAction Stop
         $BOARD = "$($mb.Manufacturer) $($mb.Product) S/N: $($mb.SerialNumber)"
         return @{ SERIAL = $SERIAL; BIOS = $BIOS; BOARD = $BOARD }
-    } catch {
+    }
+    catch {
         return @{ SERIAL = 'N/A'; BIOS = 'N/A'; BOARD = 'N/A' }
     }
 }
@@ -302,8 +390,8 @@ function Get-NetworkInfo {
     $NETDETAILS = @()
     try {
         $allNics = Get-CimInstance Win32_NetworkAdapter -ErrorAction Stop |
-            Where-Object { $_.NetEnabled -eq $true } |
-            Sort-Object -Property Name
+        Where-Object { $_.NetEnabled -eq $true } |
+        Sort-Object -Property Name
         foreach ($nic in $allNics) {
             $conf = Get-CimInstance Win32_NetworkAdapterConfiguration -Filter "Index=$($nic.DeviceID)" -ErrorAction SilentlyContinue
             $mac = $nic.MACAddress
@@ -330,15 +418,15 @@ function Get-NetworkInfo {
                 ""
             ) -join "`n"
             $NETDETAILS += [PSCustomObject]@{
-                Nome = $nic.Name
-                Tipo = $tipoCon
-                MAC = $mac
-                IPv4 = $ipv4
-                IPv6 = $ipv6
+                Nome    = $nic.Name
+                Tipo    = $tipoCon
+                MAC     = $mac
+                IPv4    = $ipv4
+                IPv6    = $ipv6
                 Mascara = $mask
                 Gateway = $gateway
-                DNS = $dnsString
-                Status = if ($nic.NetEnabled) { "Ativo" } else { "Inativo" }
+                DNS     = $dnsString
+                Status  = if ($nic.NetEnabled) { "Ativo" } else { "Inativo" }
             }
         }
         if ($NET.Count -eq 0) {
@@ -346,7 +434,8 @@ function Get-NetworkInfo {
             $NETINFO = "N/A"
             $NETDETAILS = @()
         }
-    } catch {
+    }
+    catch {
         $NET = "N/A"
         $NETINFO = "N/A"
         $NETDETAILS = @()
@@ -365,8 +454,9 @@ $NETDETAILS = $netInfo.NETDETAILS
 function Get-DisksInfo {
     try {
         return Get-CimInstance Win32_DiskDrive -ErrorAction Stop |
-            ForEach-Object { "{0}: {1:N1} GB ({2})" -f $_.Model, ($_.Size/1GB), $_.InterfaceType }
-    } catch {
+        ForEach-Object { "{0}: {1:N1} GB ({2})" -f $_.Model, ($_.Size / 1GB), $_.InterfaceType }
+    }
+    catch {
         return @("N/A")
     }
 }
@@ -383,6 +473,12 @@ Write-Field "Versao"             $VERS
 Write-Field "Arquitetura"        $ARCH
 Write-Field "Product Key Windows" (Get-WindowsProductKey)
 
+Write-Header "Software"
+Write-Field "Microsoft Office" (Get-OfficeProductKey)
+Write-Field "Aplicativos Instalados" "$($APPS.Count)"
+Write-Field "Atualizacoes Instaladas" "$($UPDATES.Count)"
+Write-Field "Servicos em Execucao" "$($SERVICES.Count)"
+
 Write-Header "Hardware"
 Write-Field "Processador"        $CPU
 Write-Field "Memoria"            "$RAM - $Channel - $Speeds"
@@ -395,7 +491,8 @@ Write-Header "Rede"
 if ($NET -is [array]) {
     Write-Host "Interfaces de Rede Ativas:" -ForegroundColor Cyan
     Write-Host $NETINFO
-} else {
+}
+else {
     Write-Field "Rede" $NET
     Write-Host $NETINFO
 }
@@ -423,9 +520,11 @@ do {
     
     if ($choice -eq "1") {
         break
-    } elseif ($choice -eq "2") {
+    }
+    elseif ($choice -eq "2") {
         break
-    } else {
+    }
+    else {
         Write-Host "`nOpcao invalida! Digite 1 ou 2." -ForegroundColor Red
         Start-Sleep -Seconds 1
         Clear-Host
@@ -438,25 +537,25 @@ do {
 if ($choice -eq "1") {
     # Cria hashtable com todos os dados coletados
     $systemData = @{
-        SO = $SO
-        VERS = $VERS
-        ARCH = $ARCH
-        CPU = $CPU
-        RAM = $RAM
-        Channel = $Channel
-        Speeds = $Speeds
-        GPU = $GPU
-        BOARD = $BOARD
-        BIOS = $BIOS
-        SERIAL = $SERIAL
-        NET = $NET
-        NETINFO = $NETINFO
+        SO         = $SO
+        VERS       = $VERS
+        ARCH       = $ARCH
+        CPU        = $CPU
+        RAM        = $RAM
+        Channel    = $Channel
+        Speeds     = $Speeds
+        GPU        = $GPU
+        BOARD      = $BOARD
+        BIOS       = $BIOS
+        SERIAL     = $SERIAL
+        NET        = $NET
+        NETINFO    = $NETINFO
         NETDETAILS = $NETDETAILS
-        DISKS = $DISKS
-        PKEY = Get-WindowsProductKey
+        DISKS      = $DISKS
+        PKEY       = Get-WindowsProductKey
     }
     # Gera o arquivo CSV
-    $csvResult = Export-SystemInfoToCSV -SystemData $systemData
+    $csvData += [PSCustomObject]@{ Categoria = "SOFTWARE"; Campo = "MICROSOFT OFFICE"; Valor = Clean-SpecialCharacters (Get-OfficeProductKey) }
     if ($csvResult) {
         Write-Host "`n" -NoNewline
         Write-Host "===============================================" -ForegroundColor Green
@@ -473,8 +572,9 @@ if ($choice -eq "1") {
         $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
         [Environment]::Exit(0)
     }
-} elseif ($choice -eq "2") {
+}
+elseif ($choice -eq "2") {
     # Fecha o terminal completamente
     [Environment]::Exit(0)
-    
+
 }
