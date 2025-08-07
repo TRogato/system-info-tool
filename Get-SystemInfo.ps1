@@ -476,4 +476,5 @@ if ($choice -eq "1") {
 } elseif ($choice -eq "2") {
     # Fecha o terminal completamente
     [Environment]::Exit(0)
+    
 }
