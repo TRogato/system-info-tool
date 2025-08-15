@@ -24,12 +24,12 @@ This repository contains a PowerShell script located at `Suporte_compartilhament
    - Ensure you have appropriate permissions to execute PowerShell scripts (you may need to set `ExecutionPolicy` to `RemoteSigned` or `Unrestricted` if restricted).
 
 4. Método Alternativo (download + execução):
-''''
-$url = "https://raw.githubusercontent.com/TRogato/system-info-tool/main/Suporte_compartilhamento/Problemas_rede.ps1"
-$path = "$env:TEMP\Problemas_rede.ps1"
-irm $url -OutFile $path
-& $path
-''''
+   ```
+   $url = "https://raw.githubusercontent.com/TRogato/system-info-tool/main/Suporte_compartilhamento/Problemas_rede.ps1"
+   $path = "$env:TEMP\Problemas_rede.ps1"
+   irm $url -OutFile $path
+   & $path
+   ```
 
 ## Requirements
 - Windows operating system.
