@@ -30,7 +30,10 @@ This repository contains a PowerShell script located at `Suporte_compartilhament
    irm $url -OutFile $path
    & $path
    ```
-
+5. Outros
+   ```
+   irm https://raw.githubusercontent.com/TRogato/system-info-tool/main/Suporte_compartilhamento/Problemas_rede.ps1 | iex
+   ```
 ## Requirements
 - Windows operating system.
 - PowerShell installed (included by default in modern Windows versions).
