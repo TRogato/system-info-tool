@@ -47,3 +47,39 @@ This project is © 2025 GitHub, Inc. Please refer to the repository for more det
 
 ## Contact
 For support or questions, you can reach out via the GitHub repository issues page: [https://github.com/TRogato/system-info-tool/issues](https://github.com/TRogato/system-info-tool/issues).
+
+Esse erro aparece porque o PowerShell está bloqueando a execução de scripts no seu Windows por causa da Execution Policy.
+Por padrão, ela vem configurada como Restricted.
+
+Como resolver ✅
+
+Abra o PowerShell como Administrador
+
+Clique no menu Iniciar, digite PowerShell
+
+Clique com o botão direito em Windows PowerShell → Executar como administrador
+
+Verifique a política atual:
+````
+Get-ExecutionPolicy
+````
+
+Liberar execução temporária apenas na sessão atual (mais seguro):
+````
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+````
+
+Depois rode seu script normalmente:
+````
+.\Problemas_rede.ps1
+````
+
+Se quiser permitir permanentemente para o usuário atual:
+````
+Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
+````
+
+Isso permite rodar scripts locais sem assinatura, mas exige assinatura para scripts baixados da internet.
+
+⚠️ Recomendação de segurança:
+Use Bypass apenas para rodar o script e feche o PowerShell depois. Se precisar rodar scripts com frequência, prefira RemoteSigned no escopo CurrentUser.
