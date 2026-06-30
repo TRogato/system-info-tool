@@ -30,19 +30,23 @@ Scripts PowerShell para reparo de mapeamentos de rede persistentes.
 
 ### Opcao 2 — Execucao direta (sem download)
 
-Se ja estiver no PowerShell (prompt `PS>`), cole direto:
+**Metodo mais confiavel (qualquer versao)** — download + execucao em 2 passos:
+
+Passo 1 — baixar o script:
 ```powershell
-$c = New-Object System.Net.WebClient; $c.Headers.Add('User-Agent','PowerShell'); iex $c.DownloadString('https://raw.githubusercontent.com/TRogato/system-info-tool/main/Suporte_compartilhamento/reparar_rede/Reparar_Rede.ps1')
+$c = New-Object System.Net.WebClient; $c.Headers.Add('User-Agent','PowerShell'); $c.DownloadFile('https://raw.githubusercontent.com/TRogato/system-info-tool/main/Suporte_compartilhamento/reparar_rede/Reparar_Rede.ps1', "$env:TEMP\r.ps1")
 ```
 
-No **cmd.exe** (Prompt de Comando), Win7:
+Passo 2 — executar:
 ```powershell
-powershell -ExecutionPolicy Bypass -Command "& { $c = New-Object System.Net.WebClient; $c.Headers.Add('User-Agent','PowerShell'); iex $c.DownloadString('https://raw.githubusercontent.com/TRogato/system-info-tool/main/Suporte_compartilhamento/reparar_rede/Reparar_Rede.ps1') }"
+& "$env:TEMP\r.ps1"
 ```
 
-No **cmd.exe**, Win8+:
+**Metodo inline (uma linha)** — se o terminal nao quebrar a linha:
+
+No PowerShell ja aberto (prompt `PS>`):
 ```powershell
-powershell -ExecutionPolicy Bypass -Command "Invoke-Expression (Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/TRogato/system-info-tool/main/Suporte_compartilhamento/reparar_rede/Reparar_Rede.ps1' -UseBasicParsing).Content"
+iex (New-Object System.Net.WebClient).DownloadString('https://raw.githubusercontent.com/TRogato/system-info-tool/main/Suporte_compartilhamento/reparar_rede/Reparar_Rede.ps1')
 ```
 
 Se o problema persistir, execute `.\Restaurar_Mapeamentos.ps1` para criar uma tarefa agendada de reparo automatico no boot.
