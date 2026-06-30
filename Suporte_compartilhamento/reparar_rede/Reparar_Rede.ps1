@@ -9,6 +9,11 @@ if (-not $isAdmin) {
     exit 1
 }
 
+# Forcar TLS 1.2 para conexoes HTTPS (necessario no Win7 para GitHub)
+try {
+    [System.Net.ServicePointManager]::SecurityProtocol = 3072
+} catch { }
+
 $osVersion = [Environment]::OSVersion.Version
 $isWin8OrLater = $osVersion -ge (New-Object 'Version' 6,2)
 $isWin10OrLater = $osVersion -ge (New-Object 'Version' 10,0)

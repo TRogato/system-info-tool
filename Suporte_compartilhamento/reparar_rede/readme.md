@@ -30,23 +30,20 @@ Scripts PowerShell para reparo de mapeamentos de rede persistentes.
 
 ### Opcao 2 — Execucao direta (sem download)
 
-**Metodo mais confiavel (qualquer versao)** — download + execucao em 2 passos:
+**Metodo mais confiavel** — download manual, depois executa local:
 
-Passo 1 — baixar o script:
+1. Acesse: https://raw.githubusercontent.com/TRogato/system-info-tool/main/Suporte_compartilhamento/reparar_rede/Reparar_Rede.ps1
+2. Salve o arquivo como `Reparar_Rede.ps1` em um pendrive
+3. Copie para cada maquina e execute como Administrador:
 ```powershell
+.\Reparar_Rede.ps1
+```
+
+**Se nao puder usar pendrive** — via PowerShell (se tiver .NET 4.5+ instalado no Win7):
+```powershell
+[System.Net.ServicePointManager]::SecurityProtocol = 3072
 $c = New-Object System.Net.WebClient; $c.Headers.Add('User-Agent','PowerShell'); $c.DownloadFile('https://raw.githubusercontent.com/TRogato/system-info-tool/main/Suporte_compartilhamento/reparar_rede/Reparar_Rede.ps1', "$env:TEMP\r.ps1")
-```
-
-Passo 2 — executar:
-```powershell
 & "$env:TEMP\r.ps1"
-```
-
-**Metodo inline (uma linha)** — se o terminal nao quebrar a linha:
-
-No PowerShell ja aberto (prompt `PS>`):
-```powershell
-iex (New-Object System.Net.WebClient).DownloadString('https://raw.githubusercontent.com/TRogato/system-info-tool/main/Suporte_compartilhamento/reparar_rede/Reparar_Rede.ps1')
 ```
 
 Se o problema persistir, execute `.\Restaurar_Mapeamentos.ps1` para criar uma tarefa agendada de reparo automatico no boot.
