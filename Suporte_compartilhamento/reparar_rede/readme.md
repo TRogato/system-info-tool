@@ -21,20 +21,26 @@ Scripts PowerShell para reparo de mapeamentos de rede persistentes.
 
 ### Opcao 1 — Download e execucao local
 
-1. Execute o PowerShell como **Administrador**
-2. Baixe e execute:
+1. Baixe o arquivo `Reparar_Rede.ps1` e salve em `C:\`
+2. Abra o **Prompt de Comando** (cmd.exe) como Administrador
+3. Execute:
 ```powershell
-.\Reparar_Rede.ps1
+powershell -ExecutionPolicy Bypass -File C:\Reparar_Rede.ps1
 ```
-3. Reinicie o computador quando solicitado
+4. Reinicie o computador quando solicitado
 
 ### Opcao 2 — Execucao direta (sem download)
 
 **Metodo mais confiavel** — download manual, depois executa local:
 
-1. Acesse: https://raw.githubusercontent.com/TRogato/system-info-tool/main/Suporte_compartilhamento/reparar_rede/Reparar_Rede.ps1
-2. Salve o arquivo como `Reparar_Rede.ps1` em um pendrive
-3. Copie para cada maquina e execute como Administrador:
+1. Acesse o link e salve o arquivo como `C:\Reparar_Rede.ps1`
+2. Abra o **Prompt de Comando** (cmd.exe) como Administrador
+3. Execute:
+```powershell
+powershell -ExecutionPolicy Bypass -File C:\Reparar_Rede.ps1
+```
+
+**Ja no PowerShell** (prompt `PS>`), execute como Administrador:
 ```powershell
 .\Reparar_Rede.ps1
 ```
